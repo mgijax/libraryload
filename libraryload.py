@@ -89,7 +89,8 @@
 #	7.  Verify the Reference (J:)
 #	    If the verification fails, report the error and skip the record.
 #
-#	8.  If the Library cannot be found in the database, create PRB_Source, MGI_AttrbuteHistory records for the MGI object.
+#	8.  If the Library cannot be found in the database, create PRB_Source, MGI_AttrbuteHistory, ACC_Accession
+#	    records for the MGI object.
 #
 #	9.  If the Library can be found in the database, update any attribure which
 #	    has not been modified by a curator.
@@ -733,9 +734,10 @@ def addLibrary():
 		bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, createdBy, createdBy, cdate, cdate])
 
 	# write ACC_Accession and ACC_AccessionReference records
-	prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-	bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
-	accKey = accKey + 1
+	if len(libraryID) > 0:
+		prefixpart, numericpart = accessionlib.split_accnum(libraryID)
+		bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
+		accKey = accKey + 1
 
 def updateLibrary():
 	'''
