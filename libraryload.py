@@ -362,8 +362,8 @@ def verifyMode():
     return
 
 def verifyAge(
-    age,         # the Age value from the input file, string
-    lineNum      # the line number (from the input file) on which this value was found, integer
+    age,         # the Age value from the input file (string)
+    lineNum      # the line number (from the input file) on which this value was found (integer)
     ):
 
     # Purpose: verifies the age value
@@ -384,8 +384,8 @@ def verifyAge(
     return (ageMin, ageMax)
 
 def verifyLibrary(
-    libraryName, # the Library Name value from the input file, string
-    lineNum      # the line number (from the input file) on which this value was found, integer
+    libraryName, # the Library Name value from the input file (string)
+    lineNum      # the line number (from the input file) on which this value was found (integer)
     ):
 
     # Purpose: verifies the Library value
@@ -409,8 +409,8 @@ def verifyLibrary(
         return(0)
 
 def verifyLogicalDB(
-    logicalDB,   # the Logical DB value from the input file, string
-    lineNum      # the line number (from the input file) on which this value was found, integer
+    logicalDB,   # the Logical DB value from the input file (string)
+    lineNum      # the line number (from the input file) on which this value was found (integer)
     ):
 
     # Purpose: verifies the Logical DB value
@@ -434,8 +434,8 @@ def verifyLogicalDB(
         return(0)
 
 def verifyReference(
-    referenceID,	# the Accession ID of the reference (J:) from the input file, string
-    lineNum		# the line number (from the input file) on which this value was found, integer
+    referenceID,	# the Accession ID of the reference (J:) from the input file (string)
+    lineNum		# the line number (from the input file) on which this value was found (integer)
     ):
 
     # Purpose: verifies the Reference
@@ -462,8 +462,8 @@ def verifyReference(
     return(key)
 
 def verifyGender(
-    gender, 		# the Gender value from the input file, string
-    lineNum		# the line number (from the input file) on which this value was found, integer
+    gender, 		# the Gender value from the input file (string)
+    lineNum		# the line number (from the input file) on which this value was found (integer)
     ):
 
     # Purpose: verifies the Gender
@@ -480,7 +480,7 @@ def verifyGender(
         return(0)
 
 def verifyStrain(
-    strain,		# the Strain value from the input file, string
+    strain,		# the Strain value from the input file (string)
     lineNum		# the line number (from the input file) on which this value was found
     ):
 
@@ -510,7 +510,7 @@ def verifyStrain(
             return(r['_Strain_key'])
 
 def verifyTissue(
-    tissue,		# the Tissue value from the input file, string
+    tissue,		# the Tissue value from the input file (string)
     lineNum		# the line number (from the input file) on which this value was found
     ):
 
@@ -727,7 +727,7 @@ def updateLibrary():
 
 def bcpWrite(
     fp, 	# file pointer of bcp file
-    values	# list of values to write to bcp file, list
+    values	# list of values to write to bcp file (list)
     ):
 
     # Purpose: converts each value item to a string and writes out the values
@@ -788,6 +788,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.15  2003/03/12 17:22:02  lec
+# revised to use coding standards
+#
 # Revision 1.14  2003/03/12 17:04:34  lec
 # revised to use coding standards
 #
