@@ -452,7 +452,8 @@ def processFile():
 
 	# else, process existing library
         else:
-            updateLibrary()
+            updateLibrary(accKey)
+	    accKey = accKey + 1
 
     return
 
@@ -478,7 +479,10 @@ def addLibrary(
 
     return
 
-def updateLibrary():
+def updateLibrary(
+    accKey	# primary key for accession id, integer
+    ):
+
     # Purpose: update the Clone Library record with the new values
     # Returns: nothing
     # Assumes: nothing
@@ -567,6 +571,11 @@ def updateLibrary():
             if r['accID'] != libraryID:
                 db.sql('exec ACC_update %s, "%s"' % (r['_Accession_key'], libraryID), None)
 
+	if len(results) == 0:
+            prefixpart, numericpart = accessionlib.split_accnum(libraryID)
+            bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
+	        0, 1, loaddate, loaddate, loaddate])
+
     return
 
 def bcpWrite(
@@ -632,6 +641,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.19  2004/01/27 17:48:25  lec
+# TR 5020
+#
 # Revision 1.18  2003/03/21 16:24:45  lec
 # LAF2
 #

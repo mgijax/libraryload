@@ -285,7 +285,7 @@ def processFile():
 	else:
 	    organism = organismLookup[inOrganism]
 
-	segmentType = NS
+	segmentType = 'cDNA'
         strain = NS
         age = NS
         cellLine = ''
@@ -346,6 +346,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.13  2004/01/27 17:48:24  lec
+# TR 5020
+#
 # Revision 1.12  2004/01/22 17:46:21  lec
 # new IMAGE
 #
