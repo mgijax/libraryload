@@ -209,7 +209,8 @@ def showUsage():
         '-D database\n' + \
         '-U user\n' + \
         '-P password file\n' + \
-        '-M mode\n'
+        '-M mode (full, preview)\n' + \
+	'-I input file\n'
 
     exit(1, usage)
 
@@ -607,7 +608,7 @@ def processFile():
         if libraryKey == 0:
 
             libraryKey = newlibraryKey
-            addLibrary()
+            addLibrary(accKey)
 
 	    # increment primary keys
 
@@ -622,7 +623,9 @@ def processFile():
 
     return
 
-def addLibrary():
+def addLibrary(
+    accKey	# primary key for accession id, integer
+    ):
     # Purpose: writes bcp records for a new library
     # Returns: nothing
     # Assumes: nothing
@@ -715,8 +718,9 @@ def updateLibrary():
 
     if len(libraryID) > 0:
         results = db.sql('select _Accession_key, accID ' + \
-            'from PRB_Source_Acc_View ' + \
-            'where _LogicalDB_key = %s ' % (logicalDBKey) + \
+            'from ACC_Accession ' + \
+            'where _MGIType_key = 5 ' + \
+	    'and _LogicalDB_key = %s ' % (logicalDBKey) + \
             'and _Object_key = %s ' % (libraryKey), 'auto')
 
         for r in results:
@@ -788,6 +792,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.17  2003/03/12 17:28:13  lec
+# revised to use coding standards
+#
 # Revision 1.16  2003/03/12 17:26:00  lec
 # revised to use coding standards
 #
