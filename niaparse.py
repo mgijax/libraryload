@@ -23,22 +23,25 @@
 #
 #      A file containing the NIA library definitions.
 #      A library definition spans multiple lines.
-#      The start of a record is signified by "Name       ".
+#      The start of a record is signified by "Name".
 #      The end of a reocrd is signified by the next blank line.
 #
 #      Format:
 #              
 #  Name       Mouse Undifferentiated ES Cell cDNA Library (Long)
+#  NIA Library ID cDNA30
+#  IAMGE Library ID	1992
 #  Organism   Mus musculus
 #  Strain     129/Sv x 129/Sv-CP
 #  Sex        Unknown
+#  Tissue     Undifferentiated Embryonic Stem Cell
 #  Stage      R1 ES cells
 #  Host       DH10B
 #  Vector     pSPORT1 (Gibco/BRL Life Technology)
-#  V_Type     Plasmid (ampicillin resistant)
+#  V_Type     Plasmid
 #  RE_1       SalI
 #  RE_2       NotI
-#  Description
+#  Description (all one line)
 #             This is a long-transcript enriched cDNA library (Ref. Genome
 #             Res. 11: 1553-1558 (2001). [PMID: 11544199]).Total RNAs were
 #             obtained from Dr. Kenneth R. Boheler (National Institute on
@@ -47,19 +50,21 @@
 #
 # Outputs:
 #
-#	A tab-delimited file in the libraryload.py format:
+#	A tab-delimited file in the format:
 #		field 1: Library Name
 #		field 2: Library Accession Name
 #		field 3: Library ID
-#		field 4: Organism
-#		field 5: Strain
-#		field 6: Tissue
-#		field 7: Age
-#		field 8: Gender
-#		field 9: Cell Line
-#		field 10: J#
-#		field 11: note
-#		field 12: Created By
+#		field 4: Segment Type
+#		field 5: Vector Type
+#		field 6: Organism
+#		field 7: Strain
+#		field 8: Tissue
+#		field 9: Age
+#		field 10: Gender
+#		field 11: Cell Line
+#		field 12: J#
+#		field 13: Note
+#		field 14: Created By
 #
 # Exit Codes:
 #
@@ -89,23 +94,20 @@
 import sys
 import os
 import string
-import getopt
-import regsub
 
 #globals
 
 TAB = '\t'
 CRT = '\n'
 
-in1File = ''		# file descriptor of input file
-in2File = ''		# file descriptor of input file
+inFile = ''		# file descriptor of input file
 outputFile = ''		# file descriptor of output file
 errorFile = ''		# file descriptor of error file
 
-in1FileName = 'NIA_cDNA_library_info.02_27_03.txt'
-in2FileName = 'Library-Information.txt'
+inFileName = 'NIA_Lib_Source_Info.txt'
 
 NS = 'Not Specified'
+segmentType = 'cDNA'
 organism = 'mouse, laboratory'
 logicalDBName = 'NIA15K'
 jnum = 'J:57656'
@@ -136,8 +138,7 @@ def exit(
         sys.stderr.write('\n' + str(message) + '\n')
      
     try:
-	in1File.close()
-	in2File.close()
+	inFile.close()
 	outputFile.close()
 	errorFile.close()
     except:
@@ -153,37 +154,17 @@ def exit(
 # Throws:  nothing
      
 def init():
-    global in1File, in2File, outputFile, errorFile
+    global inFile, outputFile, errorFile
      
-#    try:
-#        optlist, args = getopt.getopt(sys.argv[1:], 'I:')
-#    except:
-#        showUsage()
-     
-#    in1FileName = ''
     outputFileName = ''
      
-#    for opt in optlist:
-#        if opt[0] == '-I':
-#            in1FileName = opt[1]
-#        else:
-#    	    showUsage()
-
-#    if in1FileName == '':
-#        showUsage()
-
-    outputFileName = in1FileName + '.lib'
-    errorFileName = in1FileName + '.error'
+    outputFileName = inFileName + '.lib'
+    errorFileName = inFileName + '.error'
 
     try:
-        in1File = open(in1FileName, 'r')
+        inFile = open(inFileName, 'r')
     except:
-        exit(1, 'Could not open file %s\n' % in1FileName)
-		    
-    try:
-        in2File = open(in2FileName, 'r')
-    except:
-        exit(1, 'Could not open file %s\n' % in2FileName)
+        exit(1, 'Could not open file %s\n' % inFileName)
 		    
     try:
         outputFile = open(outputFileName, 'w')
@@ -205,21 +186,18 @@ def init():
 
 def processFile():
 
-    librariesToLoad = {}
-    for line in in2File.readlines():
-	tokens = string.split(line[:-1], TAB)
-	librariesToLoad[tokens[2]] = tokens[0]
-
     writeRecord = 0
 
-    for line in in1File.readlines():
+    for line in inFile.readlines():
 
-	if string.find(line[:-1], ' Name       ') >= 0:
+	if string.find(line[:-1], 'Name') >= 0:
 
             if writeRecord:
                         outputFile.write(libraryName + TAB + \
                             logicalDBName + TAB + \
                             libraryID + TAB + \
+                            segmentType + TAB + \
+                            vectorType + TAB + \
                             organism + TAB + \
                             strain + TAB + \
                             tissue + TAB + \
@@ -230,15 +208,10 @@ def processFile():
                             note + TAB + \
                             createdBy + CRT)
 
-            libraryName = 'NIA ' + line[12:-1]
+            [label, libraryName] = string.split(line[:-1], '\t')
 
-	    if librariesToLoad.has_key(libraryName):
-		libraryID = librariesToLoad[libraryName]
-	    else:
-                libraryID = ''
-
-	    libraryName = regsub.gsub(' cDNA Library', '', libraryName)
-	    libraryName = regsub.gsub('-dpc', ' dpc', libraryName)
+	    libraryID = ''
+	    vectorType = NS
             strain = NS
             gender = NS
             tissue = NS
@@ -248,9 +221,17 @@ def processFile():
 
             writeRecord = 1
 
-        elif string.find(line[:-1], ' Strain     ') >= 0:
+        elif string.find(line[:-1], 'NIA Library ID') >= 0:
 
-            strain = line[12:-1]
+            [label, libraryID] = string.split(line[:-1], '\t')
+
+        elif string.find(line[:-1], 'V_Type') >= 0:
+
+            [label, vectorType] = string.split(line[:-1], '\t')
+
+        elif string.find(line[:-1], 'Strain') >= 0:
+
+            [label, strain] = string.split(line[:-1], '\t')
 
             if len(strain) == 0:
 		strain = NS
@@ -263,27 +244,35 @@ def processFile():
             elif strain == '129/Sv x 129/Sv-CP':
 		strain = '129/Sv x 129/Sv-p Tyr<c>'
 
-        elif string.find(line[:-1], ' Sex        ') >= 0:
+        elif string.find(line[:-1], 'Sex') >= 0:
 
-	    gender = line[12:-1]
+            [label, gender] = string.split(line[:-1], '\t')
 
             if gender == 'Unknown':
                 gender = 'Pooled'
 
-        elif string.find(line[:-1], ' Stage      ') >= 0:
+        elif string.find(line[:-1], 'Stage') >= 0:
 
-	    stage = line[12:-1]
+            [label, stage] = string.split(line[:-1], '\t')
 
 	    if stage == 'R1 ES cells':
 		cellLine = 'embryonic stem cell line R1, undifferentiated'
+	    elif stage == 'Whole embryo including extraembryonic tissues at 8.5-days postcoitum':
+		age = 'embryonic day 8.5'
 	    elif stage == '3.5-dpc':
 		age = 'embryonic day 3.5'
-	    elif stage == '7.5-dpc' or stage == '7.5dpc Embryo':
+	    elif stage == '7.5-dpc' or stage == '7.5dpc Embryo' or stage == 'embryonic day 7.5 postconception':
 		age = 'embryonic day 7.5'
 	    elif stage == '12.5-dpc' or stage == '12.5dpc':
 		age = 'embryonic day 12.5'
 	    elif stage == '13.5-dpc':
 		age = 'embryonic day 13.5'
+	    elif stage == 'E6.5':
+		age = 'embryonic day 6.5'
+	    elif stage == 'E8':
+		age = 'embryonic day 8.0'
+	    elif stage == 'E9.5':
+		age = 'embryonic day 9.5'
 	    elif stage == 'Age ~10 weeks old':
 		age = 'postnatal week 10'
 	    elif stage == '2-cell stage embryo':
@@ -307,29 +296,109 @@ def processFile():
             elif stage == 'Newborn Kidney':
 		age = 'postnatal day 0.0'
 		tissue = 'kidney'
+            elif stage == 'Newborn Ovary':
+		age = 'postnatal day 0.0'
+		tissue = 'ovary'
             elif stage == 'Unfertilized Egg':
 		age = 'Not Applicable'
 		tissue = 'unfertilized egg'
             elif stage == 'Fertilized Egg':
 		age = 'embryonic day 0-0.9'
 		tissue = 'fertilized egg'
+            elif stage == 'Adult':
+		age = 'postnatal adult'
             elif stage == 'Mouse Blastocyst stage embryo':
 		age = 'Not Specified'
 		tissue = 'blastocyst'
 
+        elif string.find(line[:-1], 'Tissue') >= 0:
+
+            [label, tissue] = string.split(line[:-1], '\t')
+
+#	    if tissue == 'Undifferentiated Embryonic Stem Cell':
+
+#	    elif tissue == 'Embryonic Stem Cell (LIF-)':
+
+#	    elif tissue == 'Embryonic Germ Cell':
+
+#	    elif tissue == 'Genital Ridge/Mesonephros':
+
+#	    elif tissue == 'Dopamine Cell':
+
+#	    elif tissue == 'Neural Stem Cell (Undifferentiated)':
+
+#	    elif tissue == 'Neural Stem Cell (Differentiated)':
+
+	    if tissue == 'Trophoblast Stem Cell':
+		tissue = 'trophoblast'
+
+	    elif tissue == 'Hematopoietic Stem Cell (Lin-/c-Kit+/Sca-1-)':
+		tissue = 'hematopoietic'
+
+	    elif tissue == 'Hematopoietic Stem Cell (Lin-/c-Kit+/Sca-1+)':
+		tissue = 'hematopoietic'
+
+	    elif tissue == 'Osteoblast':
+		tissue = 'osteoblast'
+
+	    elif tissue == 'Mesenchymal Stem Cell':
+		tissue = 'mesenchyme'
+
+	    elif tissue == 'Blastocyst':
+		tissue = 'blastocyst'
+
+	    elif tissue == 'whole embryo including extraembryonic tissues at 6.5-days postcoitum':
+		tissue = 'embryo and extraembryonic component'
+
+	    elif tissue == 'whole embryo including extraembryonic tissues at 7.5-days postcoitum':
+		tissue = 'embryo and extraembryonic component'
+
+	    elif tissue == 'whole embryo including extraembryonic tissues at 8.5-days postcoitum':
+		tissue = 'embryo and extraembryonic component'
+
+	    elif tissue == 'whole embryo including extraembryonic tissues at 9.5-days postcoitum':
+		tissue = 'embryo and extraembryonic component'
+
+	    elif tissue == 'Unfertilized Egg':
+		tissue = 'unfertilized egg'
+
+	    elif tissue == 'Newborn Heart':
+		tissue = 'heart'
+
+	    elif tissue == 'Newborn Brain':
+		tissue = 'brain'
+
+	    elif tissue == 'Newborn Kidney':
+		tissue = 'kidney'
+
+	    elif tissue == 'Germinal Center B Cell':
+		tissue = 'germ cells'
+
+	    elif tissue == '4-cell stage embryo':
+		tissue = '4-cell embryo'
+
+	    elif tissue == '8-cell stage embryo':
+		tissue = '8-cell embryo'
+
+	    elif tissue == 'ectoplacental cone':
+	        tissue = 'ectoplacental cone'
+
+
     if writeRecord:
         outputFile.write(libraryName + TAB + \
-            logicalDBName + TAB + \
-            libraryID + TAB + \
-            organism + TAB + \
-            strain + TAB + \
-            tissue + TAB + \
-            age + TAB + \
-            gender + TAB + \
-            cellLine + TAB + \
-            jnum + TAB + \
-            note + TAB + \
-            createdBy + CRT)
+                         logicalDBName + TAB + \
+                         libraryID + TAB + \
+                         segmentType + TAB + \
+                         vectorType + TAB + \
+                         organism + TAB + \
+                         strain + TAB + \
+                         tissue + TAB + \
+                         age + TAB + \
+                         gender + TAB + \
+                         cellLine + TAB + \
+                         jnum + TAB + \
+                         note + TAB + \
+                         createdBy + CRT)
 
     return
 
@@ -342,4 +411,7 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.1  2003/06/17 16:29:34  lec
+# new
+#
 

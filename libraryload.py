@@ -425,7 +425,7 @@ def processFile():
         logicalDBKey = loadlib.verifyLogicalDB(logicalDB, lineNum, errorFile)
 
 	if libraryKey == 0:
-	    librarykey = sourceloadlib.verifyLibraryID(libraryID, logicalDBKey, lineNum, errorFile)
+	    libraryKey = sourceloadlib.verifyLibraryID(libraryID, logicalDBKey, lineNum, errorFile)
 
 	segmentTypeKey = sourceloadlib.verifySegmentType(segmentType, lineNum, errorFile)
 	vectorTypeKey = sourceloadlib.verifyVectorType(vectorType, lineNum, errorFile)
@@ -561,13 +561,17 @@ def updateLibrary(
                 currValue = "NULL"
             else:
                 currValue = r['value']
+
             if len(cellLine) == 0:
                 newValue = "NULL"
             else:
                 newValue = cellLine
 
             if newValue != currValue:
-                if newValue == "NULL":
+		# don't overwrite a curated value with a null
+		if currvalue != "NULL" and newValue == "NULL":
+		    pass
+                elif newValue == "NULL":
                     setCmds.append('%s = NULL' % (r['colName']))
                 else:
                     setCmds.append('%s = "%s"' % (r['colName'], newValue))
@@ -671,6 +675,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.22  2004/01/28 17:52:06  lec
+# JSAM
+#
 # Revision 1.21  2004/01/28 17:15:54  lec
 # libraryload.py.jsam
 #
