@@ -161,6 +161,11 @@ def processFile():
 
 		tokens = string.split(line[:-1], ': ')
 
+		try:
+			token1 = string.strip(tokens[1])
+		except:
+			pass
+
 		if tokens[0] == '<PRE>NAME':
 
 			if writeRecord:
@@ -177,7 +182,7 @@ def processFile():
 					note + TAB + \
 					createdBy + CRT)
 
-			libraryName = string.strip(tokens[1])
+			libraryName = token1
 			libraryID = ''
 			strain = NS
 			gender = NS
@@ -189,25 +194,25 @@ def processFile():
 			writeRecord = 1
 
 		elif tokens[0] == 'LIB_ID':
-			libraryID = tokens[1]
+			libraryID = token1
 
 		elif tokens[0] == 'ORGANISM':
-			organism = string.strip(tokens[1])
+			organism = token1
 
 		elif tokens[0] == 'STRAIN':
 
-			if len(string.strip(tokens[1])) > 0:
-				strain = string.strip(tokens[1])
+			if len(token1) > 0:
+				strain = token1
 
 		elif tokens[0] == 'SEX':
 
-			if len(string.strip(tokens[1])) > 0:
-				gender = string.lower(string.strip(tokens[1]))
+			if len(token1) > 0:
+				gender = string.lower(token1)
 
 		elif tokens[0] == 'ORGAN':
 
-			if len(string.strip(tokens[1])) > 0:
-				tissue = string.lower(string.strip(tokens[1]))
+			if len(token1) > 0:
+				tissue = string.lower(token1)
 	
 				if tissue in ['colon cancer cell line', 'pituitary cell line']:
 					cellLine = tissue
@@ -215,7 +220,7 @@ def processFile():
 		elif tokens[0] == 'STAGE':
 
 			try:
-				s = string.split(tokens[1], ' ')
+				s = string.split(token1, ' ')
 				d = string.split(s, 'dpc')
 
 				if s[1] == 'embryos':
@@ -227,10 +232,10 @@ def processFile():
 				age = head + tail
 
 			except:
-				age = tokens[1]
+				age = token1
 
 		elif tokens[0] == '*COMMENT':
-			note = tokens[1]
+			note = token1
 
 #
 # Main

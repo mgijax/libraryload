@@ -153,6 +153,7 @@ libraryKey = ''
 description = ''
 library = ''
 libraryID = ''
+libraryIDKey = ''
 logicalDBKey = ''
 referenceKey = ''
 organismKey = ''
@@ -455,6 +456,38 @@ def verifyLibrary(library, lineNum):
 	else:
 		return(0)
 
+def verifyLibraryID(libraryID, lineNum):
+	'''
+	# requires:
+	#	libraryID - the Library ID
+	#	lineNum - the line number of the record from the input file
+	#
+	# effects:
+	#	verifies that the Library ID exists 
+	#
+	# returns:
+	#	0 if the libraryID should not be deleted (new library or same ID)
+	#	Accession key if library ID does exist and needs to be deleted
+	#	because the ID has changed.
+	#
+	'''
+
+	key = 0
+
+	if len(libraryID) == 0 or libraryKey == 0:
+		return(key)
+
+	results = db.sql('select _Accession_key, accID ' + \
+		'from PRB_Source_Acc_View ' + \
+		'where _LogicalDB_key = %s ' % (logicalDBKey) + \
+		'and _Object_key = %s ' % (libraryKey), 'auto')
+
+	for r in results:
+		if r['accID'] != libraryID:
+			key = r['_Accession_key']
+
+	return(key)
+
 def verifyLogicalDB(logicalDB, lineNum):
 	'''
 	# requires:
@@ -651,7 +684,7 @@ def processFile():
 	#
 	'''
 
-	global library, libraryID, libraryKey, logicalDBKey
+	global library, libraryID, libraryKey, libraryIDKey, logicalDBKey
 	global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
 	global newlibraryKey
 
@@ -675,6 +708,7 @@ def processFile():
 
 		libraryKey = verifyLibrary(library, lineNum)
 		logicalDBKey = verifyLogicalDB(logicalDB, lineNum)
+		libraryIDKey = verifyLibraryID(libraryID, lineNum)
 		organismKey = verifyOrganism(organism, lineNum)
 		referenceKey = verifyReference(jnum, lineNum)
 		strainKey = verifyStrain(strain, lineNum)
@@ -683,7 +717,7 @@ def processFile():
 		ageMin, ageMax = verifyAge(age, lineNum)
 
 		# it's a new library
-		if libraryKey == 0:
+		if not libraryKey:
 			libraryKey = newlibraryKey
 			newlibrary = 1
 			newlibraryKey = newlibraryKey + 1
@@ -754,45 +788,80 @@ def updateLibrary():
 	#
 	'''
 
+	global accKey
+
 	setCmds = []
 
 	#
 	# only read in columns which can be updated
 	#
 
-	results = db.sql('select columnName from MGI_AttributeHistory ' + \
+	results = db.sql('select columnName ' + \
+		'from MGI_AttributeHistory ' + \
 		'where _MGIType_key = %s ' % (mgiTypeKey) + \
 		'and _Object_key = %s ' % (libraryKey) + \
 		'and modifiedBy like "%load"', 'auto')
 
+	cmds = []
 	for r in results:
-		if r['columnName'] == 'name':
-			setCmds.append('%s = "%s"' % (r['columnName'], library))
-		elif r['columnName'] == '_Refs_key':
-			setCmds.append('%s = %s' % (r['columnName'], referenceKey))
-		elif r['columnName'] == '_Organism_key':
-			setCmds.append('%s = %s' % (r['columnName'], organismKey))
-		elif r['columnName'] == '_Strain_key':
-			setCmds.append('%s = %s' % (r['columnName'], strainKey))
-		elif r['columnName'] == '_Tissue_key':
-			setCmds.append('%s = %s' % (r['columnName'], tissueKey))
-		elif r['columnName'] == 'age':
-			setCmds.append('%s = "%s"' % (r['columnName'], age))
+		cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (r['columnName'], r['columnName']) + \
+			'from PRB_Source where _Source_key = %s' % (libraryKey))
+	
+	results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
+	for r in results:
+		if r['colName'] == 'name' and r['value'] != library:
+			setCmds.append('%s = "%s"' % (r['colName'], library))
+
+		elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
+			setCmds.append('%s = %s' % (r['colName'], referenceKey))
+
+		elif r['colName'] == '_Organism_key' and r['value'] != str(organismKey):
+			setCmds.append('%s = %s' % (r['colName'], organismKey))
+
+		elif r['colName'] == '_Strain_key' and r['value'] != str(strainKey):
+			setCmds.append('%s = %s' % (r['colName'], strainKey))
+
+		elif r['colName'] == '_Tissue_key' and r['value'] != str(tissueKey):
+			setCmds.append('%s = %s' % (r['colName'], tissueKey))
+
+		elif r['colName'] == 'age' and r['value'] != age:
+			setCmds.append('%s = "%s"' % (r['colName'], age))
 			setCmds.append('ageMin = %s' % (ageMin))
 			setCmds.append('ageMax = %s' % (ageMax))
-		elif r['columnName'] == 'sex':
-			setCmds.append('%s = "%s"' % (r['columnName'], gender))
-		elif r['columnName'] == 'cellLine':
-			if len(cellLine) == 0:
-				setCmds.append('%s = NULL' % (r['columnName']))
+
+		elif r['colName'] == 'sex' and r['value'] != gender:
+			setCmds.append('%s = "%s"' % (r['colName'], gender))
+
+		elif r['colName'] == 'cellLine':
+
+			if r['value'] == None:
+				newValue = "NULL"
 			else:
-				setCmds.append('%s = "%s"' % (r['columnName'], cellLine))
+				newValue = r['value']
+
+			if len(cellLine) == 0:
+				currValue = "NULL"
+			else:
+				currValue = cellLine
+
+			if newValue != currValue:
+				if newValue == "NULL":
+					setCmds.append('%s = NULL' % (r['colName']))
+				else:
+					setCmds.append('%s = "%s"' % (r['colName'], newValue))
 
 	if len(setCmds) > 0:
 		setCmds.append('modifiedBy = "%s"' % (createdBy))
 		setCmds.append('modification_date = getdate()')
 		setCmd = string.join(setCmds, ',')
 		db.sql('update PRB_Source set %s where _Source_key = %s' % (setCmd, libraryKey), None, execute = not DEBUG)
+
+	# accession id
+	if len(libraryID) > 0 and libraryIDKey:
+		db.sql('exec ACC_delete_byAccKey %s' % (libraryIDKey), None)
+		prefixpart, numericpart = accessionlib.split_accnum(libraryID)
+		bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
+		accKey = accKey + 1
 
 def bcpWrite(fp, values):
 	'''
