@@ -4,11 +4,12 @@
 #
 # Purpose:
 #
-#	Convert IMAGE .shtml file into format for libraryload.
+#	To translate an IMAGE library file into a Library Load input file
 #
-# Input(s):
+# Parameters:
+#	-I = input file
 #
-#	IMAGE_muslib_info_01_15_03.shtml
+# Input:
 #
 # Output:
 #
@@ -37,104 +38,205 @@ import sys
 import os
 import string
 import getopt
-import db
 import mgi_utils
 
 #globals
 
+inputFile = ''		# file descriptor
+outputFile = ''		# file descriptor
+errorFile = ''		# file descriptor
+
 TAB = '\t'
 CRT = '\n'
 
-inputFile = ''		# file descriptor
-outputFile = ''		# file descriptor
-
 NS = 'Not Specified'
 logicalDBName = 'I.M.A.G.E. Clone Libraries'
-cellLine = ''
 jnum = 'J:80000'
 createdBy = 'library_load'
 
 cdate = mgi_utils.date('%m/%d/%Y')	# current date
 
+def showUsage():
+	'''
+	# requires:
+	#
+	# effects:
+	# Displays the correct usage of this program and exits
+	# with status of 1.
+	#
+	# returns:
+	'''
+ 
+	usage = 'usage: %s -I input file\n' % sys.argv[0]
+	exit(1, usage)
+ 
+def exit(status, message = None):
+	'''
+	# requires: status, the numeric exit status (integer)
+	#           message (string)
+	#
+	# effects:
+	# Print message to stderr and exits
+	#
+	# returns:
+	#
+	'''
+ 
+	if message is not None:
+		sys.stderr.write('\n' + str(message) + '\n')
+ 
+	try:
+		inputFile.close()
+		outputFile.close()
+		errorFile.close()
+	except:
+		pass
+
+	sys.exit(status)
+ 
+def init():
+	'''
+	# requires: 
+	#
+	# effects: 
+	# 1. Processes command line options
+	#
+	# returns:
+	#
+	'''
+ 
+	global inputFile, outputFile, errorFile
+ 
+	try:
+		optlist, args = getopt.getopt(sys.argv[1:], 'I:')
+	except:
+		showUsage()
+ 
+	inputFileName = ''
+	outputFileName = ''
+ 
+	for opt in optlist:
+                if opt[0] == '-I':
+                        inputFileName = opt[1]
+                else:
+                        showUsage()
+
+	if inputFileName == '' or outputFileName == '':
+		showUsage()
+
+	outputFileName = inputFileName + '.lib'
+	errorFileName = inputFileName + '.error'
+
+	try:
+		inputFile = open(inputFileName, 'r')
+	except:
+		exit(1, 'Could not open file %s\n' % inputFileName)
+		
+	try:
+		outputFile = open(outputFileName, 'w')
+	except:
+		exit(1, 'Could not open file %s\n' % outputFileName)
+		
+	try:
+		errorFile = open(errorFileName, 'w')
+	except:
+		exit(1, 'Could not open file %s\n' % errorFileName)
+		
+def processFile():
+	'''
+	# requires:
+	#
+	# effects:
+	#	Reads input file
+	#	Writes output file
+	#
+	# returns:
+	#	nothing
+	#
+	'''
+
+	writeRecord = 0
+
+	for line in inputFile.readlines():
+
+		tokens = string.split(line[:-1], ': ')
+
+		if tokens[0] == '<PRE>NAME':
+
+			if writeRecord:
+				outputFile.write(libraryName + TAB + \
+					logicalDBName + TAB + \
+					libraryID + TAB + \
+					organism + TAB + \
+					strain + TAB + \
+					tissue + TAB + \
+					age + TAB + \
+					gender + TAB + \
+					cellLine + TAB + \
+					jnum + TAB + \
+					note + TAB + \
+					createdBy + CRT)
+
+			libraryName = tokens[1]
+			libraryID = ''
+			strain = NS
+			gender = NS
+			tissue = NS
+			age = NS
+			note = ''
+			cellLine = ''
+
+			writeRecord = 1
+
+		elif tokens[0] == 'LIB_ID':
+			libraryID = tokens[1]
+
+		elif tokens[0] == 'ORGANISM':
+			organism = string.strip(tokens[1])
+
+		elif tokens[0] == 'STRAIN':
+
+			if len(string.strip(tokens[1])) > 0:
+				strain = string.strip(tokens[1])
+
+		elif tokens[0] == 'SEX':
+
+			if len(string.strip(tokens[1])) > 0:
+				gender = string.lower(string.strip(tokens[1]))
+
+		elif tokens[0] == 'ORGAN':
+
+			if len(string.strip(tokens[1])) > 0:
+				tissue = string.lower(string.strip(tokens[1]))
+	
+				if tissue in ['colon cancer cell line', 'pituitary cell line']:
+					cellLine = tissue
+
+		elif tokens[0] == 'STAGE':
+
+			try:
+				s = string.split(tokens[1], ' ')
+				d = string.split(s, 'dpc')
+
+				if s[1] == 'embryos':
+					head = 'embryonic day '
+
+				if d[1] == 'dpc':
+					tail = d[0]
+
+				age = head + tail
+
+			except:
+				age = tokens[1]
+
+		elif tokens[0] == '*COMMENT':
+			note = tokens[1]
+
 #
 # Main
 #
 
-inputFile = open('IMAGE_muslib_info_01_15_03.shtml', 'r')
-outputFile = open('IMAGE.tab', 'w')
+init()
+processFile()
+exit(0)
 
-writeRecord = 0
-
-for line in inputFile.readlines():
-
-	tokens = string.split(line[:-1], ': ')
-
-	if tokens[0] == '<PRE>NAME':
-
-		if writeRecord:
-			outputFile.write(libraryName + TAB + \
-				logicalDBName + TAB + \
-				libraryID + TAB + \
-				organism + TAB + \
-				strain + TAB + \
-				tissue + TAB + \
-				age + TAB + \
-				gender + TAB + \
-				cellLine + TAB + \
-				jnum + TAB + \
-				note + TAB + \
-				createdBy + CRT)
-
-		libraryName = tokens[1]
-		libraryID = ''
-		strain = NS
-		gender = NS
-		tissue = NS
-		age = NS
-		note = ''
-
-		writeRecord = 1
-
-	elif tokens[0] == 'LIB_ID':
-		libraryID = tokens[1]
-
-	elif tokens[0] == 'ORGANISM':
-		organism = string.strip(tokens[1])
-
-	elif tokens[0] == 'STRAIN':
-
-		if len(string.strip(tokens[1])) > 0:
-			strain = string.strip(tokens[1])
-
-	elif tokens[0] == 'SEX':
-
-		if len(string.strip(tokens[1])) > 0:
-			gender = string.lower(string.strip(tokens[1]))
-
-	elif tokens[0] == 'ORGAN':
-
-		if len(string.strip(tokens[1])) > 0:
-			tissue = string.lower(string.strip(tokens[1]))
-
-	elif tokens[0] == 'STAGE':
-
-		try:
-			s = string.split(tokens[1], ' ')
-			d = string.split(s, 'dpc')
-
-			if s[1] == 'embryos':
-				head = 'embryonic day '
-
-			if d[1] == 'dpc':
-				tail = d[0]
-
-			age = head + tail
-
-		except:
-			age = tokens[1]
-
-	elif tokens[0] == '*COMMENT':
-		note = tokens[1]
-
-inputFile.close()
-outputFile.close()
