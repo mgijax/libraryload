@@ -14,6 +14,7 @@
 #
 #	PRB_Source
 #	ACC_Accession
+#	MGI_AttributeHistory
 #
 # Requirements Satisfied by This Program:
 #
@@ -57,10 +58,11 @@
 #
 # Outputs:
 #
-#       2 BCP files:
+#       3 BCP files:
 #
 #       PRB_Source.bcp         		Library
 #       ACC_Accession.bcp        	Accession table
+#	MGI_AttributeHistory.bcp	Attribute History
 #
 #	Diagnostics file of all input parameters and SQL commands
 #	Error file
@@ -641,6 +643,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.25  2004/03/09 19:10:15  lec
+# JSAM
+#
 # Revision 1.24  2004/03/09 19:07:29  lec
 # JSAM
 #
