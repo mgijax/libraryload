@@ -1,6 +1,12 @@
 #!/usr/local/bin/python
 
-'''
+# $HEADER$
+# $NAMES$
+
+#
+# Program:	libraryload.py
+#
+# Original Author: Lori Corbani
 #
 # Purpose:
 #
@@ -9,11 +15,27 @@
 #	PRB_Source
 #	ACC_Accession
 #
-# Assumes:
+# Requirements Satisfied by This Program:
 #
-# Side Effects:
+# Usage:
+#	libraryload.py
+#	-S = database server
+#	-D = database
+#	-U = user
+#	-P = password file
+#	-M = mode (full, preview)
+#	-I = input file
 #
-#	None
+#	processing modes:
+#		full - update Libraries.  
+#			add new libraries if necessary.
+#			update existing libraries where necessary.
+#
+#		preview - perform all record verifications but do not load the data or
+#		          make any changes to the database.  used for testing or to preview
+#			  the load.
+#
+# Envvars:
 #
 # Input(s):
 #
@@ -31,24 +53,7 @@
 #		field 11: Note
 #		field 12: Created By
 #
-# Parameters:
-#	-S = database server
-#	-D = database
-#	-U = user
-#	-P = password file
-#	-M = mode (full, preview)
-#	-I = input file
-#
-#	processing modes:
-#		full - update Libraries.  
-#			add new libraries if necessary.
-#			update existing libraries where necessary.
-#
-#		preview - perform all record verifications but do not load the data or
-#		          make any changes to the database.  used for testing or to preview
-#			  the load.
-#
-# Output:
+# Outputs:
 #
 #       2 BCP files:
 #
@@ -58,7 +63,14 @@
 #	Diagnostics file of all input parameters and SQL commands
 #	Error file
 #
-# Processing:
+# Assumes:
+#
+#      That this program has exclusive access to the database
+#      since it is creating new Accession records.
+#
+# Implementation:
+#
+#	Modules:
 #
 #	1. Verify Mode.
 #		if mode = full:
@@ -87,18 +99,12 @@
 #	7.  Verify the Reference (J:)
 #	    If the verification fails, report the error and skip the record.
 #
-#	8.  If the Library cannot be found in the database, create PRB_Source, MGI_AttrbuteHistory, ACC_Accession
+#	8.  If the Library cannot be found in the database, create PRB_Source, ACC_Accession
 #	    records for the MGI object.
 #
 #	9.  If the Library can be found in the database, update any attribure which
 #	    has not been modified by a curator.
 #
-# History:
-#
-# lec	02/20/2003
-#	- part of JSAM
-#
-'''
 
 import sys
 import os
@@ -113,6 +119,8 @@ import mgi_utils
 
 DEBUG = 0		# set DEBUG to false unless preview mode is selected
 TAB = '\t'
+BCPDELIM = TAB
+REFERENCE = 'Reference'
 
 inputFile = ''		# file descriptor
 diagFile = ''		# file descriptor
@@ -124,17 +132,22 @@ passwordFileName = ''	# file name
 
 libraryFile = ''	# file descriptor
 libraryFileName = ''	# file name
+libraryTable = 'PRB_Source'
+libraryFileSuffix = '.%s.bcp' % (libraryTable)
+
 accFile = ''		# file descriptor
 accFileName = ''	# file name
+accTable = 'ACC_Accession'
+accFileSuffix = '.%s.bcp' % (accTable)
 
 mode = ''		# processing mode
-bcpdelim = TAB
 
 referenceDict = {}	# dictionary of Jnum and Reference keys
 strainDict = {}		# dictionary of Strain names and Strain keys
 tissueDict = {}		# dictionary of Tissue names and Tissue keys
-genderList = ['Female', 'Male', 'Pooled', 'Not Specified']
+genderList = ['Female', 'Male', 'Pooled', 'Not Specified']	# list of valid Gender values
 libraryDict = {}	# dictionary of named Libraries
+logicalDict = {}	# dictionary of Logical DBs
 
 mgiTypeKey = ''		# mgi type key of library record
 
@@ -159,536 +172,476 @@ ageMax = ''
 gender = ''
 cellLine = ''
 createdBy = ''
-newlibraryKey = ''
-accKey = ''
 
 def showUsage():
-	'''
-	# requires:
-	#
-	# effects:
-	# Displays the correct usage of this program and exits
-	# with status of 1.
-	#
-	# returns:
-	'''
- 
-	usage = 'usage: %s -S server\n' % sys.argv[0] + \
-		'-D database\n' + \
-		'-U user\n' + \
-		'-P password file\n' + \
-		'-M mode\n' + \
-		'-I input file\n'
-	exit(1, usage)
- 
-def exit(status, message = None):
-	'''
-	# requires: status, the numeric exit status (integer)
-	#           message (string)
-	#
-	# effects:
-	# Print message to stderr and exits
-	#
-	# returns:
-	#
-	'''
- 
-	if message is not None:
-		sys.stderr.write('\n' + str(message) + '\n')
- 
-	try:
-		inputFile.close()
-		diagFile.write('\n\nEnd Date/Time: %s\n' % (mgi_utils.date()))
-		errorFile.write('\n\nEnd Date/Time: %s\n' % (mgi_utils.date()))
-		diagFile.close()
-		errorFile.close()
-		libraryFile.close()
-		accFile.close()
-	except:
-		pass
+    # Purpose: displays correct usage of this program
+    # Returns: nothing
+    # Assumes: nothing
+    # Effects: exits with status of 1
+    # Throws: nothing
 
-	db.useOneConnection()
-	sys.exit(status)
- 
+    usage = 'usage: %s -S server\n' % sys.argv[0] + \
+        '-D database\n' + \
+        '-U user\n' + \
+        '-P password file\n' + \
+        '-M mode\n'
+
+    exit(1, usage)
+
+def exit(
+    status,          # numeric exit status (integer)
+    message = None   # exit message (string)
+    ):
+
+    # Purpose:
+    # Returns: nothing
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
+
+    if message is not None:
+        sys.stderr.write('\n' + str(message) + '\n')
+
+    try:
+        inputFile.close()
+        diagFile.write('\n\nEnd Date/Time: %s\n' % (mgi_utils.date()))
+        errorFile.write('\n\nEnd Date/Time: %s\n' % (mgi_utils.date()))
+        diagFile.close()
+        errorFile.close()
+        libraryFile.close()
+        accFile.close()
+    except:
+        pass
+
+    db.useOneConnection(0)
+    sys.exit(status)
+
 def init():
-	'''
-	# requires: 
-	#
-	# effects: 
-	# 1. Processes command line options
-	# 2. Initializes local DBMS parameters
-	# 3. Initializes global file descriptors/file names
-	# 4. Initializes global keys
-	#
-	# returns:
-	#
-	'''
- 
-	global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-	global libraryFile, libraryFileName, accFile, accFileName
-	global mode, mgiTypeKey
-	global tissueDict, libraryDict
-	global newlibraryKey, accKey
- 
-	try:
-		optlist, args = getopt.getopt(sys.argv[1:], 'S:D:U:P:M:I:')
-	except:
-		showUsage()
- 
-	#
-	# Set server, database, user, passwords depending on options
-	# specified by user.
-	#
- 
-	server = ''
-	database = ''
-	user = ''
-	password = ''
-	inputFileName = ''
- 
-	for opt in optlist:
-                if opt[0] == '-S':
-                        server = opt[1]
-                elif opt[0] == '-D':
-                        database = opt[1]
-                elif opt[0] == '-U':
-                        user = opt[1]
-                elif opt[0] == '-P':
-			passwordFileName = opt[1]
-                elif opt[0] == '-M':
-                        mode = opt[1]
-                elif opt[0] == '-I':
-                        inputFileName = opt[1]
-                else:
-                        showUsage()
+    # Purpose: process command line options
+    # Returns: nothing
+    # Assumes: nothing
+    # Effects: initializes global variables
+    #          calls showUsage() if usage error
+    #          exits if files cannot be opened
+    # Throws: nothing
 
-	# User must specify Server, Database, User and Password
-	password = string.strip(open(passwordFileName, 'r').readline())
-	if server == '' or \
-	   database == '' or \
-	   user == '' or \
-	   password == '' or \
-	   mode == '' or \
-	   inputFileName == '':
-		showUsage()
-
-	# Initialize db.py DBMS parameters
-	db.set_sqlLogin(user, password, server, database)
-	db.useOneConnection(1)
+    global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
+    global libraryFile, libraryFileName, accFile, accFileName
+    global mode, mgiTypeKey
  
-	fdate = mgi_utils.date('%m%d%Y')	# current date
-	head, tail = os.path.split(inputFileName) 
-	diagFileName = tail + '.' + fdate + '.diagnostics'
-	errorFileName = tail + '.' + fdate + '.error'
-	libraryFileName = tail + '.' + fdate + '.PRB_Source.bcp'
-	accFileName = tail + '.' + fdate + '.ACC_Accession.bcp'
+    try:
+        optlist, args = getopt.getopt(sys.argv[1:], 'S:D:U:P:M:I:')
+    except:
+        showUsage()
+ 
+    server = ''
+    database = ''
+    user = ''
+    password = ''
+    inputFileName = ''
+ 
+    for opt in optlist:
+        if opt[0] == '-S':
+            server = opt[1]
+        elif opt[0] == '-D':
+            database = opt[1]
+        elif opt[0] == '-U':
+            user = opt[1]
+        elif opt[0] == '-P':
+            passwordFileName = opt[1]
+        elif opt[0] == '-M':
+            mode = opt[1]
+        elif opt[0] == '-I':
+            inputFileName = opt[1]
+        else:
+            showUsage()
 
-	try:
-		inputFile = open(inputFileName, 'r')
-	except:
-		exit(1, 'Could not open file %s\n' % inputFileName)
+    # User must specify Server, Database, User and Password
+    password = string.strip(open(passwordFileName, 'r').readline())
+
+    if server == '' or \
+        database == '' or \
+        user == '' or \
+        password == '' or \
+        mode == '' or \
+        inputFileName == '':
+        showUsage()
+
+    # Initialize db.py DBMS parameters
+    db.set_sqlLogin(user, password, server, database)
+    db.useOneConnection(1)
+ 
+    fdate = mgi_utils.date('%m%d%Y')	# current date
+    head, tail = os.path.split(inputFileName) 
+    diagFileName = tail + '.' + fdate + '.diagnostics'
+    errorFileName = tail + '.' + fdate + '.error'
+    libraryFileName = tail + '.' + fdate + libraryFileSuffix
+    accFileName = tail + '.' + fdate + accFileSuffix
+
+    try:
+        inputFile = open(inputFileName, 'r')
+    except:
+        exit(1, 'Could not open file %s\n' % inputFileName)
 		
-	try:
-		diagFile = open(diagFileName, 'w')
-	except:
-		exit(1, 'Could not open file %s\n' % diagFileName)
+    try:
+        diagFile = open(diagFileName, 'w')
+    except:
+        exit(1, 'Could not open file %s\n' % diagFileName)
 		
-	try:
-		errorFile = open(errorFileName, 'w')
-	except:
-		exit(1, 'Could not open file %s\n' % errorFileName)
+    try:
+        errorFile = open(errorFileName, 'w')
+    except:
+        exit(1, 'Could not open file %s\n' % errorFileName)
 		
-	try:
-		libraryFile = open(libraryFileName, 'w')
-	except:
-		exit(1, 'Could not open file %s\n' % libraryFileName)
+    try:
+        libraryFile = open(libraryFileName, 'w')
+    except:
+        exit(1, 'Could not open file %s\n' % libraryFileName)
 		
-	try:
-		accFile = open(accFileName, 'w')
-	except:
-		exit(1, 'Could not open file %s\n' % accFileName)
+    try:
+        accFile = open(accFileName, 'w')
+    except:
+        exit(1, 'Could not open file %s\n' % accFileName)
 		
-	# Log all SQL
-	db.set_sqlLogFunction(db.sqlLogAll)
+    # Log all SQL
+    db.set_sqlLogFunction(db.sqlLogAll)
 
-	# Set Log File Descriptor
-	db.set_sqlLogFD(diagFile)
+    # Set Log File Descriptor
+    db.set_sqlLogFD(diagFile)
 
-	diagFile.write('Start Date/Time: %s\n' % (mgi_utils.date()))
-	diagFile.write('Server: %s\n' % (server))
-	diagFile.write('Database: %s\n' % (database))
-	diagFile.write('User: %s\n' % (user))
-	diagFile.write('Input File: %s\n' % (inputFileName))
+    diagFile.write('Start Date/Time: %s\n' % (mgi_utils.date()))
+    diagFile.write('Server: %s\n' % (server))
+    diagFile.write('Database: %s\n' % (database))
+    diagFile.write('User: %s\n' % (user))
+    diagFile.write('Input File: %s\n' % (inputFileName))
 
-	errorFile.write('Start Date/Time: %s\n\n' % (mgi_utils.date()))
+    errorFile.write('Start Date/Time: %s\n\n' % (mgi_utils.date()))
 
-	results = db.sql('select _MGIType_key from ACC_MGIType where name = "Source"', 'auto')
-	for r in results:
-		mgiTypeKey = r['_MGIType_key']
+    # retrieve mgiTypeKey
+    results = db.sql('select _MGIType_key from ACC_MGIType where name = "Source"', 'auto')
+    for r in results:
+        mgiTypeKey = r['_MGIType_key']
 
-	# initialize tissue list
-	results = db.sql('select _Tissue_key, tissue from PRB_Tissue ', 'auto')
-	for r in results:
-		tissueDict[r['tissue']] = r['_Tissue_key']
-
-	# initialize libraryDict
-	results = db.sql('select _Source_key, name from PRB_Source where name is not null', 'auto')
-	for r in results:
-		libraryDict[r['name']] = r['_Source_key']
-
-	results = db.sql('select maxKey = max(_Source_key) + 1 from PRB_Source', 'auto')
-	newlibraryKey = results[0]['maxKey']
-
-	results = db.sql('select maxKey = max(_Accession_key) + 1 from ACC_Accession', 'auto')
-	accKey = results[0]['maxKey']
+    return
 
 def verifyMode():
-	'''
-	# requires:
-	#
-	# effects:
-	#	Verifies the processing mode is valid.  If it is not valid,
-	#	the program is aborted.
-	#	Sets globals based on processing mode.
-	#	Deletes data based on processing mode.
-	#
-	# returns:
-	#	nothing
-	#
-	'''
+    # Purpose: verifies the processing mode
+    # Returns: nothing
+    # Assumes: nothing
+    # Effects: exits with status 1 if the processing mode is invalid
+    #          else sets global DEBUG based on processing mode
+    # Throws: nothing
 
-	global DEBUG
+    global DEBUG
 
-	if mode == 'preview':
-		DEBUG = 1
-	elif mode != 'full':
-		exit(1, 'Invalid Processing Mode:  %s\n' % (mode))
+    if mode == 'preview':
+        DEBUG = 1
+    elif mode != 'full':
+        exit(1, 'Invalid Processing Mode:  %s\n' % (mode))
 
-def verifyAge(age, lineNum):
-	'''
-	# requires:
-	#	age - the Age
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that:
-	#		the Age is valid
-	#	writes to the error file if the Age is invalid
-	#
-	# returns:
-	#	ageMin, ageMax values
-	#
-	'''
+    return
 
-	ageMin, ageMax = agelib.ageMinMax(age)
+def verifyAge(
+    age,         # the Age value from the input file, string
+    lineNum      # the line number (from the input file) on which this value was found, integer
+    ):
 
-	if ageMin == None:
-		ageMin = -1
-		ageMax = -1
+    # Purpose: verifies the age value
+    # Returns: ageMin, ageMax; the numeric values which correspond to the age
+    # Assumes: nothing
+    # Effects: writes to the error log if the age is invalid
+    # Throws: nothing
 
-#	if ageMin == None:
-#		errorFile.write('Invalid Age (line: %d) %s\n' % (lineNum, age))
+    ageMin, ageMax = agelib.ageMinMax(age)
 
-	return (ageMin, ageMax)
+    if ageMin == None:
+        ageMin = -1
+        ageMax = -1
 
-def verifyLibrary(library, lineNum):
-	'''
-	# requires:
-	#	library - the Library Name
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that the Library exists 
-	#
-	# returns:
-	#	0 if Library does not exist
-	#	Library key if Library does exist
-	#
-	'''
+    if ageMin == None:
+        errorFile.write('Invalid Age (line: %d) %s\n' % (lineNum, age))
 
-	if libraryDict.has_key(library):
-		return(libraryDict[library])
-	else:
-		return(0)
+    return (ageMin, ageMax)
 
-def verifyLogicalDB(logicalDB, lineNum):
-	'''
-	# requires:
-	#	logicalDB - the name of the logical DB for the library ID
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that:
-	#		the logical DB exists for the logicalDB
-	#
-	# returns:
-	#	0 if logical DB for the Library does not exist
-	#	Logical DB key if logical DB for the Library does exist
-	#
-	'''
+def verifyLibrary(
+    library,     # the Library value from the input file, string
+    lineNum      # the line number (from the input file) on which this value was found, integer
+    ):
 
+    # Purpose: verifies the Library value
+    # Returns: 0 if the Library does not exist in MGI
+    #          else the primary key of the Library
+    # Assumes: nothing
+    # Effects: initializes the Library dictionary for quicker lookup
+    # Throws: nothing
+
+    global libraryDict
+
+    if len(libraryDict) == 0:
+        # initialize library dictionary
+        results = db.sql('select _Source_key, name from %s where name is not null' % (libraryTable), 'auto')
+        for r in results:
+            libraryDict[r['name']] = r['_Source_key']
+
+    if libraryDict.has_key(library):
+        return(libraryDict[library])
+    else:
+        return(0)
+
+def verifyLogicalDB(
+    logicalDB,   # the Logical DB value from the input file, string
+    lineNum      # the line number (from the input file) on which this value was found, integer
+    ):
+
+    # Purpose: verifies the Logical DB value
+    # Returns: 0 if the Logical DB value does not exist in MGI
+    #          else the primary key of the Logical DB
+    # Assumes: nothing
+    # Effects: initializes the Logical DB dictionary for quicker lookup
+    # Throws: nothing
+
+    global logicalDict
+
+    if len(logicalDict) == 0:
+        # initialize logicalDB dictionary
+        results = db.sql('select _LogicalDB_key, name from ACC_LogicalDB', 'auto')
+        for r in results:
+            logicalDict[r['name']] = r['_LogicalDB_key']
+
+    if logicalDict.has_key(logicalDB):
+        return(logicalDict[logicalDB])
+    else:
+        return(0)
+
+def verifyReference(
+    referenceID,	# the Accession ID of the reference (J:) from the input file, string
+    lineNum		# the line number (from the input file) on which this value was found, integer
+    ):
+
+    # Purpose: verifies the Reference
+    # Returns: 0 if the Reference value does not exist in MGI
+    #		else the primary key of the Reference
+    # Assumes:
+    # Effects: saves the Reference/primary key in a dictionary for faster lookup
+    #          writes to the error log if the Reference is invalid
+    # Throws:
+
+    global referenceDict
+
+    if referenceDict.has_key(referenceID):
+        key = referenceDict[referenceID]
+    else:
+        key = accessionlib.get_Object_key(referenceID, REFERENCE)
+
+    if key is None:
+        errorFile.write('Invalid Reference (line: %d): %s\n' % (lineNum, referenceID))
 	key = 0
+    else:
+        referenceDict[referenceID] = key
 
-	if len(logicalDB) == 0:
-		return(key)
+    return(key)
 
-	results = db.sql('select s._LogicalDB_key ' + \
-		'from ACC_LogicalDB s ' + \
-		'where s.name = "%s" ' % (logicalDB), 'auto')
+def verifyGender(
+    gender, 		# the Gender value from the input file, string
+    lineNum		# the line number (from the input file) on which this value was found, integer
+    ):
 
-	for r in results:
-		key = r['_LogicalDB_key']
+    # Purpose: verifies the Gender
+    # Returns: 0 if the Gender value is invalid
+    #		else the Gender value
+    # Assumes:
+    # Effects: writes to the error log if the Gender is invalid
+    # Throws:
 
-	return(key)
+    if gender in genderList:
+        return(gender)
+    else:
+        errorFile.write('Invalid Gender (line: %d): %s\n' % (lineNum, gender))
+        return(0)
 
-def verifyReference(referenceID, lineNum):
-	'''
-	# requires:
-	#	referenceID - the Accession ID of the Reference (J:)
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that the Reference exists by checking the referenceDict
-	#	dictionary for the reference ID or the database.
-	#	writes to the error file if the Reference is invalid
-	#	adds the Reference ID/Key to the global referenceDict dictionary if the
-	#	reference is valid
-	#
-	# returns:
-	#	0 if the Reference is invalid
-	#	Reference Key if the Reference is valid
-	#
-	'''
+def verifyStrain(
+    strain,		# the Strain value from the input file, string
+    lineNum		# the line number (from the input file) on which this value was found
+    ):
 
-	global referenceDict
+    # Purpose: verifies the Strain
+    # Returns: 0 if the Strain
+    #		else the primary key of the Strain
+    # Assumes:
+    # Effects: saves the Strain/primary key in a dictionary for faster lookup
+    #          writes to the error log if the Gender is invalid
+    # Throws:
 
-	if referenceDict.has_key(referenceID):
-		key = referenceDict[referenceID]
-	else:
-		key = accessionlib.get_Object_key(referenceID, 'Reference')
-		if key is None:
-			errorFile.write('Invalid Reference (line: %d): %s\n' % (lineNum, referenceID))
-			key = 0
-		else:
-			referenceDict[referenceID] = key
+    global strainDict
 
-	return(key)
+    if strainDict.has_key(strain):
+        return(strainDict[strain])
+    else:
+        results = db.sql('select s._Strain_key ' + \
+            'from PRB_Strain s ' + \
+            'where s.strain = "%s" ' % (strain), 'auto')
 
-def verifyGender(gender, lineNum):
-	'''
-	# requires:
-	#	gender - the Gender
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that the Gender value is valid
-	#	writes to the error file if the Gender is invalid
-	#
-	# returns:
-	#	0 if the Gender is invalid
-	#	gender if the Gender is valid
-	#
-	'''
+	if len(results) == 0:
+            errorFile.write('Invalid Strain (line: %d) %s\n' % (lineNum, strain))
+	    return(0)
 
-	if gender in genderList:
-		return(gender)
-	else:
-		errorFile.write('Invalid Gender (line: %d): %s\n' % (lineNum, gender))
-		return(0)
+        for r in results:
+            strainDict[strain] = r['_Strain_key']
+            return(r['_Strain_key'])
 
-def verifyStrain(strain, lineNum):
-	'''
-	# requires:
-	#	strain - the Strain Name
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that:
-	#		the Strain exists either in the strain dictionary or the database
-	#			by strain name
-	#	writes to the error file if the Strain is invalid
-	#	adds the Strain key to the Strain dictionary if the Strain is valid
-	#
-	# returns:
-	#	0 if Strain is invalid
-	#	Strain key if Strain is valid
-	#
-	'''
+def verifyTissue(
+    tissue,		# the Tissue value from the input file, string
+    lineNum		# the line number (from the input file) on which this value was found
+    ):
 
-	global strainDict
+    # Purpose: verifies the Strain
+    # Returns: 0 if the Strain
+    #		else the primary key of the Strain
+    # Assumes:
+    # Effects: saves the Strain/primary key in a dictionary for faster lookup
+    #          writes to the error log if the Gender is invalid
+    # Throws:
 
-	key = 0
+    global tissueDict
 
-	if strainDict.has_key(strain):
-		return(strainDict[strain])
+    if len(tissueDict) == 0:
+        results = db.sql('select _Tissue_key, tissue from PRB_Tissue ', 'auto')
+        for r in results:
+            tissueDict[r['tissue']] = r['_Tissue_key']
 
-	else:
-		results = db.sql('select s._Strain_key ' + \
-			'from PRB_Strain s ' + \
-			'where s.strain = "%s" ' % (strain), 'auto')
-
-		for r in results:
-			key = r['_Strain_key']
-
-	if not key:
-		errorFile.write('Invalid Strain (line: %d) %s\n' % (lineNum, strain))
-	else:
-		strainDict[strain] = key
-
-	return(key)
-
-def verifyTissue(tissue, lineNum):
-	'''
-	# requires:
-	#	tissue - the Tissue Name
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that the Tissue is valid
-	#	writes to the error file if the Tissue is invalid
-	#
-	# returns:
-	#	0 if Tissue is invalid
-	#	Tissue key if Tissue is valid
-	#
-	'''
-
-	key = 0
-
-	if tissueDict.has_key(tissue):
-		return(tissueDict[tissue])
-
-	else:
-		errorFile.write('Invalid Tissue (line: %d) %s\n' % (lineNum, tissue))
-
-	return(key)
+    if tissueDict.has_key(tissue):
+        return(tissueDict[tissue])
+    else:
+        errorFile.write('Invalid Tissue (line: %d) %s\n' % (lineNum, tissue))
+        return(0)
 
 def processFile():
-	'''
-	# requires:
-	#
-	# effects:
-	#	Reads input file
-	#	Verifies and Processes each line in the input file
-	#
-	# returns:
-	#	nothing
-	#
-	'''
+    # Purpose: processes input file
+    # Returns: nothing
+    # Assumes:
+    # Effects:
+    # Throws:
 
-	global library, libraryID, libraryKey, logicalDBKey
-	global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
-	global newlibraryKey
+    global library, libraryID, libraryKey, logicalDBKey
+    global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
 
-	lineNum = 0
+    lineNum = 0
 
-	# For each line in the input file
+    # retrieve next available primary key for Library record
+    results = db.sql('select maxKey = max(_Source_key) + 1 from %s' % (libraryTable), 'auto')
+    newlibraryKey = results[0]['maxKey']
 
-	for line in inputFile.readlines():
+    # retrieve next available primary key for Accession record
+    results = db.sql('select maxKey = max(_Accession_key) + 1 from %s' % (accTable), 'auto')
+    accKey = results[0]['maxKey']
 
-		error = 0
-		newlibrary = 0
-		lineNum = lineNum + 1
+    # For each line in the input file
 
-		# Split the line into tokens
+    for line in inputFile.readlines():
 
-		try:
-			[library, logicalDB, libraryID, organism, strain, tissue, age, gender, cellLine, jnum, note, createdBy] = string.split(line[:-1], TAB)
-		except:
-			exit(1, 'Invalid Line (line: %d): %s\n' % (lineNum, line))
-			continue
+        error = 0
+        lineNum = lineNum + 1
 
-		libraryKey = verifyLibrary(library, lineNum)
-		logicalDBKey = verifyLogicalDB(logicalDB, lineNum)
-		referenceKey = verifyReference(jnum, lineNum)
-		strainKey = verifyStrain(strain, lineNum)
-		tissueKey = verifyTissue(tissue, lineNum)
-		gender = verifyGender(gender, lineNum)
-		ageMin, ageMax = verifyAge(age, lineNum)
+        # Split the line into tokens
 
-		# it's a new library
-		if not libraryKey:
-			libraryKey = newlibraryKey
-			newlibrary = 1
-			newlibraryKey = newlibraryKey + 1
+        try:
+            [library, \
+	     logicalDB, \
+	     libraryID, \
+	     organism, \
+	     strain, \
+	     tissue, \
+	     age, \
+	     gender, \
+	     cellLine, \
+	     jnum, \
+	     note, \
+	     createdBy] = string.split(line[:-1], TAB)
+        except:
+            exit(1, 'Invalid Line (line: %d): %s\n' % (lineNum, line))
+            continue
 
-		if organismKey == 0 or \
-		   referenceKey == 0 or \
-		   strainKey == 0 or \
-		   tissueKey == 0 or \
-		   gender == 0:
-			# set error flag to true
-			error = 1
+        libraryKey = verifyLibrary(library, lineNum)
+        logicalDBKey = verifyLogicalDB(logicalDB, lineNum)
+        referenceKey = verifyReference(jnum, lineNum)
+        strainKey = verifyStrain(strain, lineNum)
+        tissueKey = verifyTissue(tissue, lineNum)
+        gender = verifyGender(gender, lineNum)
+        ageMin, ageMax = verifyAge(age, lineNum)
 
-		# if errors, continue to next record
-		if error:
-			continue
+        if organismKey == 0 or \
+            referenceKey == 0 or \
+            strainKey == 0 or \
+            tissueKey == 0 or \
+            gender == 0:
+            # set error flag to true
+            error = 1
 
-		# if no errors, process
+        # if errors, continue to next record
+        if error:
+            continue
 
-		# if new library, write bcp records
+        # if no errors, continue processing
 
-		if newlibrary:
-			addLibrary()
-		else:
-			updateLibrary()
+        # process new library
+        if libraryKey == 0:
 
-#	end of "for line in inputFile.readlines():"
+            libraryKey = newlibraryKey
+            addLibrary()
 
-def addLibrary():
-	'''
-	#
-	# requires:
-	#
-	# effects:
-	#	writes the appropriate bcp records for a new library
-	#
-	# returns:
-	#	nothing
-	#
-	'''
+	    # increment primary keys
 
-	global accKey
+            newlibraryKey = newlibraryKey + 1
 
-	# write master Library record
-	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
-#	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
-
-	# write ACC_Accession and ACC_AccessionReference records
-	if len(libraryID) > 0:
-		prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-		bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
+	    if len(libraryID) > 0:
 		accKey = accKey + 1
 
+	# else, process existing library
+        else:
+            updateLibrary()
+
+    return
+
+def addLibrary():
+    # Purpose: writes bcp records for a new library
+    # Returns: nothing
+    # Assumes:
+    # Effects:
+    # Throws:
+
+    # write master Library record
+    bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, \
+	strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
+
+    # write Accession records
+    if len(libraryID) > 0:
+        prefixpart, numericpart = accessionlib.split_accnum(libraryID)
+        bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, \
+	    0, 1, cdate, cdate, cdate])
+
+    return
+
 def updateLibrary():
-	'''
-	#
-	# requires:
-	#
-	# effects:
-	#	update the Clone Library record with the new values
-	#	we don't actually check to see if any changes have been made...
-	#	if the attribute has been modified by a Curator, then do not overwrite the value
-	#
-	# returns:
-	#	nothing
-	#
-	'''
+    # Purpose: update the Clone Library record with the new values
+    # Returns: nothing
+    # Assumes:
+    # Effects:
+    # Throws:
 
-	global accKey
+    # for the given Library, read in each attribute and its current value
 
-	setCmds = []
+    setCmds = []
 
-	cmds = []
-	for columnName in ['name', '_Refs_key', '_ProbeSpecies_key', '_Strain_key', '_Tissue_key', 'age', 'sex', 'cellLine']:
-		cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (columnName, columnName) + \
-			'from PRB_Source where _Source_key = %s' % (libraryKey))
+    cmds = []
+    for columnName in ['name', '_Refs_key', '_ProbeSpecies_key', '_Strain_key', '_Tissue_key', 'age', 'sex', 'cellLine']:
+        cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (columnName, columnName) + \
+            'from %s where _Source_key = %s' % (libraryTable, libraryKey))
 
-	results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
+    results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
 
-	for r in results:
+    #  for each attribute, if it's value has changed, update it
 
-		# if the value has changed, update it
+    for r in results:
 
 		if r['colName'] == 'name' and r['value'] != library:
 			setCmds.append('%s = "%s"' % (r['colName'], library))
@@ -731,78 +684,74 @@ def updateLibrary():
 				else:
 					setCmds.append('%s = "%s"' % (r['colName'], newValue))
 
-	if len(setCmds) > 0:
-		setCmds.append('modification_date = getdate()')
-		setCmd = string.join(setCmds, ',')
-		db.sql('update PRB_Source set %s where _Source_key = %s' % (setCmd, libraryKey), None, execute = not DEBUG)
+    # if there were any attribute value changes, then execute the update
 
-	# if accession id has changed, update it
-	if len(libraryID) > 0:
-		results = db.sql('select _Accession_key, accID ' + \
-			'from PRB_Source_Acc_View ' + \
-			'where _LogicalDB_key = %s ' % (logicalDBKey) + \
-			'and _Object_key = %s ' % (libraryKey), 'auto')
+    if len(setCmds) > 0:
+        setCmds.append('modification_date = getdate()')
+        setCmd = string.join(setCmds, ',')
+        db.sql('update %s set %s where _Source_key = %s' % (libraryTable, setCmd, libraryKey), \
+	    None, execute = not DEBUG)
 
-		for r in results:
-			if r['accID'] != libraryID:
-				db.sql('exec ACC_update %s, "%s"' % (r['_Accession_key'], libraryID), None)
+    # if accession id has changed, update it
 
-def bcpWrite(fp, values):
-	'''
-	#
-	# requires:
-	#	fp; file pointer of bcp file
-	#	values; list of values
-	#
-	# effects:
-	#	converts each value item to a string and writes out the values
-	#	to the bcpFile using the appropriate delimiter
-	#
-	# returns:
-	#	nothing
-	#
-	'''
+    if len(libraryID) > 0:
+        results = db.sql('select _Accession_key, accID ' + \
+            'from PRB_Source_Acc_View ' + \
+            'where _LogicalDB_key = %s ' % (logicalDBKey) + \
+            'and _Object_key = %s ' % (libraryKey), 'auto')
 
-	# convert all members of values to strings
-	strvalues = []
-	for v in values:
-		strvalues.append(str(mgi_utils.prvalue(v)))
+        for r in results:
+            if r['accID'] != libraryID:
+                db.sql('exec ACC_update %s, "%s"' % (r['_Accession_key'], libraryID), None)
 
-	fp.write('%s\n' % (string.join(strvalues, bcpdelim)))
+    return
+
+def bcpWrite(
+    fp, 	# file pointer of bcp file
+    values	# list of values to write to bcp file, list
+    ):
+
+    # Purpose: converts each value item to a string and writes out the values
+    #          to the bcpFile using the appropriate delimiter
+    # Returns: nothing
+    # Assumes:
+    # Effects:
+    # Throws:
+
+    # convert all members of values to strings
+    strvalues = []
+    for v in values:
+        strvalues.append(str(mgi_utils.prvalue(v)))
+
+    fp.write('%s\n' % (string.join(strvalues, BCPDELIM)))
 
 def bcpFiles():
-	'''
-	# requires:
-	#
-	# effects:
-	#	BCPs the data into the database
-	#
-	# returns:
-	#	nothing
-	#
-	'''
+    # Purpose: BCPs data files into appropriate database tables
+    # Returns: nothing
+    # Assumes:
+    # Effects:
+    # Throws:
 
-	libraryFile.close()
-	accFile.close()
+    libraryFile.close()
+    accFile.close()
 
-	cmd1 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-		% (passwordFileName, db.get_sqlDatabase(), \
-	   	'PRB_Source', libraryFileName, bcpdelim, db.get_sqlServer(), db.get_sqlUser())
+    cmd1 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+        % (passwordFileName, db.get_sqlDatabase(), \
+        libraryTable, libraryFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
 
-	diagFile.write('%s\n' % cmd1)
+    diagFile.write('%s\n' % cmd1)
 
-	cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-		% (passwordFileName, db.get_sqlDatabase(), \
-	   	'ACC_Accession', accFileName, bcpdelim, db.get_sqlServer(), db.get_sqlUser())
+    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+        % (passwordFileName, db.get_sqlDatabase(), \
+        accTable, accFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
 
-	diagFile.write('%s\n' % cmd2)
+    diagFile.write('%s\n' % cmd2)
 
-	if DEBUG:
-		return
+    if DEBUG:
+        return
 
-	os.system(cmd1)
-	os.system(cmd2)
-#	db.sql('dump transaction %s with truncate_only' % (db.get_sqlDatabase()), None, execute = not DEBUG)
+    os.system(cmd1)
+    os.system(cmd2)
 
 #
 # Main
@@ -813,4 +762,7 @@ verifyMode()
 processFile()
 bcpFiles()
 exit(0)
+
+
+# $Log$
 
