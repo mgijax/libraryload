@@ -164,10 +164,6 @@ libraryFile = ''	# file descriptor
 libraryFileName = ''	# file name
 libraryTable = 'PRB_Source'
 libraryFileSuffix = '.%s.bcp' % (libraryTable)
-historyFile = ''	# file descriptor
-historyFileName = ''	# file name
-historyTable = 'MGI_AttributeHistory'
-historyFileSuffix = '.%s.bcp' % (historyTable)
 
 accFile = ''		# file descriptor
 accFileName = ''	# file name
@@ -237,7 +233,6 @@ def exit(
         diagFile.close()
         errorFile.close()
         libraryFile.close()
-	historyFile.close()
         accFile.close()
     except:
         pass
@@ -255,7 +250,7 @@ def init():
     # Throws: nothing
 
     global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-    global libraryFile, libraryFileName, historyFile, historyFileName, accFile, accFileName
+    global libraryFile, libraryFileName, accFile, accFileName
     global mode
  
     try:
@@ -305,7 +300,6 @@ def init():
     diagFileName = tail + '.' + fdate + '.diagnostics'
     errorFileName = tail + '.' + fdate + '.error'
     libraryFileName = tail + '.' + fdate + libraryFileSuffix
-    historyFileName = tail + '.' + fdate + historyFileSuffix
     accFileName = tail + '.' + fdate + accFileSuffix
 
     try:
@@ -327,11 +321,6 @@ def init():
         libraryFile = open(libraryFileName, 'w')
     except:
         exit(1, 'Could not open file %s\n' % libraryFileName)
-		
-    try:
-        historyFile = open(historyFileName, 'w')
-    except:
-        exit(1, 'Could not open file %s\n' % historyFileName)
 		
     try:
         accFile = open(accFileName, 'w')
@@ -568,7 +557,6 @@ def updateLibrary(
     if len(setCmds) > 0:
         setCmds.append('modification_date = getdate()')
         setCmd = string.join(setCmds, ',')
-	# note that the update trigger handles updates to the history records
         db.sql('update %s set %s where _Source_key = %s' % (libraryTable, setCmd, libraryKey), \
 	    None, execute = not DEBUG)
 
@@ -629,17 +617,11 @@ def bcpFiles():
 
     diagFile.write('%s\n' % cmd1)
 
-#    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-#        % (passwordFileName, db.get_sqlDatabase(), \
-#        historyTable, historyFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
-#
-#    diagFile.write('%s\n' % cmd2)
-
-    cmd3 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
         % (passwordFileName, db.get_sqlDatabase(), \
         accTable, accFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
 
-    diagFile.write('%s\n' % cmd3)
+    diagFile.write('%s\n' % cmd2)
 
     if DEBUG:
         return
@@ -661,6 +643,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.21.2.1  2004/03/09 19:03:10  lec
+# mgi 298
+#
 # Revision 1.21  2004/01/28 17:15:54  lec
 # libraryload.py.jsam
 #
