@@ -663,8 +663,8 @@ def updateLibrary():
 
     for r in results:
 
-        if r['colName'] == 'name' and r['value'] != library:
-                setCmds.append('%s = "%s"' % (r['colName'], library))
+        if r['colName'] == 'name' and r['value'] != libraryName:
+                setCmds.append('%s = "%s"' % (r['colName'], libraryName))
 
         elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
                 setCmds.append('%s = %s' % (r['colName'], referenceKey))
@@ -788,6 +788,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.16  2003/03/12 17:26:00  lec
+# revised to use coding standards
+#
 # Revision 1.15  2003/03/12 17:22:02  lec
 # revised to use coding standards
 #
