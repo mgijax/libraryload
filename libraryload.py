@@ -138,6 +138,7 @@ referenceDict = {}	# dictionary of Jnum and Reference keys
 strainDict = {}		# dictionary of Strain names and Strain keys
 tissueDict = {}		# dictionary of Tissue names and Tissue keys
 genderDict = {}		# dictionary of Gender names and Gender "keys"
+libraryDict = {}	# dictionary of named Libraries
 
 mgiTypeKey = ''		# mgi type key of library record
 
@@ -145,9 +146,13 @@ cdate = mgi_utils.date('%m/%d/%Y')	# current date
 
 libColNames  = ['name', '_Refs_key', '_Organism_key', '_Strain_key', '_Tissue_key', 'age', 'sex', 'cellLine']
 
+# Library attributes
+
 libraryKey = ''
 description = ''
 library = ''
+libraryID = ''
+logicalDBKey = ''
 referenceKey = ''
 organismKey = ''
 strainKey = ''
@@ -158,6 +163,8 @@ ageMax = ''
 gender = ''
 cellLine = ''
 createdBy = ''
+newlibraryKey = ''
+accKey = ''
 
 def showUsage():
 	'''
@@ -225,6 +232,8 @@ def init():
 	global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
 	global libraryFile, libraryFileName, historyFile, historyFileName, accFile, accFileName
 	global mode, mgiTypeKey
+	global genderDict, tissueDict, organismDict, libraryDict
+	global newlibraryKey, accKey
  
 	try:
 		optlist, args = getopt.getopt(sys.argv[1:], 'S:D:U:P:M:I:')
@@ -325,14 +334,15 @@ def init():
 	errorFile.write('Start Date/Time: %s\n\n' % (mgi_utils.date()))
 
 	# initialize gender list
-	results = db.sql('select t.term, badName = t.term ' + \
+	results = db.sql('select t.term ' + \
 		'from VOC_Term t, VOC_Vocab v ' + \
-		'where v.name = "Gender Types" ' + \
-		'and v._Vocab_key = t._Vocab_key ' + \
-		'union ' + \
-		'select v.term, t.badName ' + \
+		'where v.name = "Gender" ' + \
+		'and v._Vocab_key = t._Vocab_key ', 'auto')
+	for r in results:
+		genderDict[r['term']] = r['term']
+	results = db.sql('select v.term, t.badName ' + \
 		'from MGI_TranslationType y, MGI_Translation t, VOC_Term v ' + \
-		'where y.translationType = "Gender Types" ' + \
+		'where y.translationType = "Gender" ' + \
 		'and y._TranslationType_key = t._TranslationType_key ' + \
 		'and t._Object_key = v._Term_key ', 'auto')
 	for r in results:
@@ -343,24 +353,37 @@ def init():
 		mgiTypeKey = r['_MGIType_key']
 
 	# initialize tissue list
-	results = db.sql('select _Tissue_key, tissue from PRB_Tissue ' + \
-		'union ' + \
-		'select t._Object_key, t.badName ' + \
+	results = db.sql('select _Tissue_key, tissue from PRB_Tissue ', 'auto')
+	for r in results:
+		tissueDict[r['tissue']] = r['_Tissue_key']
+	results = db.sql('select t._Object_key, t.badName ' + \
 		'from MGI_TranslationType y, MGI_Translation t ' + \
 		'where y.translationType = "Tissues" ' + \
 		'and y._TranslationType_key = t._TranslationType_key ', 'auto')
 	for r in results:
-		tissueDict[r['tissue']] = r['_Tissue_key']
+		tissueDict[r['badName']] = r['_Object_key']
 
 	# initialize organism list
-	results = db.sql('select _Organism_key, commonName from MGI_Organism ' + \
-		'union ' + \
-		'select t._Object_key, t.badName ' + \
+	results = db.sql('select _Organism_key, commonName from MGI_Organism ', 'auto')
+	for r in results:
+		organismDict[r['commonName']] = r['_Organism_key']
+	results = db.sql('select t._Object_key, t.badName ' + \
 		'from MGI_TranslationType y, MGI_Translation t ' + \
 		'where y.translationType = "Organisms" ' + \
 		'and y._TranslationType_key = t._TranslationType_key ', 'auto')
 	for r in results:
-		organismDict[r['commonName']] = r['_Organism_key']
+		organismDict[r['badName']] = r['_Object_key']
+
+	# initialize libraryDict
+	results = db.sql('select _Source_key, name from PRB_Source where name is not null', 'auto')
+	for r in results:
+		libraryDict[r['name']] = r['_Source_key']
+
+	results = db.sql('select maxKey = max(_Source_key) + 1 from PRB_Source', 'auto')
+	newlibraryKey = results[0]['maxKey']
+
+	results = db.sql('select maxKey = max(_Accession_key) + 1 from ACC_Accession', 'auto')
+	accKey = results[0]['maxKey']
 
 def verifyMode():
 	'''
@@ -402,7 +425,7 @@ def verifyAge(age, lineNum):
 
 	ageMin, ageMax = agelib.ageMinMax(age)
 
-#	if ageMin == :
+#	if ageMin == None:
 #		errorFile.write('Invalid Age (line: %d) %s\n' % (lineNum, age))
 
 	return (ageMin, ageMax)
@@ -414,8 +437,7 @@ def verifyLibrary(library, lineNum):
 	#	lineNum - the line number of the record from the input file
 	#
 	# effects:
-	#	verifies that:
-	#		the Library exists 
+	#	verifies that the Library exists 
 	#
 	# returns:
 	#	0 if Library does not exist
@@ -423,16 +445,10 @@ def verifyLibrary(library, lineNum):
 	#
 	'''
 
-	key = 0
-
-	results = db.sql('select s._Source_key ' + \
-		'from PRB_Source s ' + \
-		'where s.name = "%s" ' % (library), 'auto')
-
-	for r in results:
-		key = r['_Source_key']
-
-	return(key)
+	if libraryDict.has_key(library):
+		return(libraryDict[library])
+	else:
+		return(0)
 
 def verifyLogicalDB(logicalDB, lineNum):
 	'''
@@ -630,13 +646,9 @@ def processFile():
 	#
 	'''
 
-	global library, libraryKey, organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
-
-	results = db.sql('select maxKey = max(_Source_key) + 1 from PRB_Source', 'auto')
-	newlibraryKey = results[0]['maxKey']
-
-	results = db.sql('select maxKey = max(_Accession_key) + 1 from ACC_Accession', 'auto')
-	accKey = results[0]['maxKey']
+	global library, libraryID, libraryKey, logicalDBKey
+	global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
+	global newlibraryKey
 
 	lineNum = 0
 
@@ -665,6 +677,7 @@ def processFile():
 		gender = verifyGender(gender, lineNum)
 		ageMin, ageMax = verifyAge(age, lineNum)
 
+		# it's a new library
 		if libraryKey == 0:
 			libraryKey = newlibraryKey
 			newlibrary = 1
@@ -684,18 +697,41 @@ def processFile():
 
 		# if no errors, process
 
-		if newlibrary:
-			bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy, createdBy, cdate, cdate])
-			for colName in libColNames:
-				bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, createdBy, createdBy, cdate, cdate])
+		# if new library, write bcp records
 
-			prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-			bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
-			accKey = accKey + 1
+		if newlibrary:
+			addLibrary()
 		else:
 			updateLibrary()
 
 #	end of "for line in inputFile.readlines():"
+
+def addLibrary():
+	'''
+	#
+	# requires:
+	#
+	# effects:
+	#	writes the appropriate bcp records for a new library
+	#
+	# returns:
+	#	nothing
+	#
+	'''
+
+	global accKey
+
+	# write master Library record
+	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy, createdBy, cdate, cdate])
+
+	# write MGI_AttributeHistory records
+	for colName in libColNames:
+		bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, createdBy, createdBy, cdate, cdate])
+
+	# write ACC_Accession and ACC_AccessionReference records
+	prefixpart, numericpart = accessionlib.split_accnum(libraryID)
+	bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
+	accKey = accKey + 1
 
 def updateLibrary():
 	'''
@@ -770,7 +806,7 @@ def bcpWrite(fp, values):
 	# convert all members of values to strings
 	strvalues = []
 	for v in values:
-		strvalues.append(str(v))
+		strvalues.append(str(mgi_utils.prvalue(v)))
 
 	fp.write('%s\n' % (string.join(strvalues, bcpdelim)))
 

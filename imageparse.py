@@ -99,22 +99,22 @@ for line in inputFile.readlines():
 		libraryID = tokens[1]
 
 	elif tokens[0] == 'ORGANISM':
-		organism = tokens[1]
+		organism = string.strip(tokens[1])
 
 	elif tokens[0] == 'STRAIN':
 
-		if len(tokens[1]) > 0:
+		if len(string.strip(tokens[1])) > 0:
 			strain = string.strip(tokens[1])
 
 	elif tokens[0] == 'SEX':
 
-		if len(tokens[1]) > 0:
-			gender = string.strip(tokens[1])
+		if len(string.strip(tokens[1])) > 0:
+			gender = string.lower(string.strip(tokens[1]))
 
 	elif tokens[0] == 'ORGAN':
 
-		if len(tokens[1]) > 0:
-			tissue = tokens[1]
+		if len(string.strip(tokens[1])) > 0:
+			tissue = string.lower(string.strip(tokens[1]))
 
 	elif tokens[0] == 'STAGE':
 
