@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 
 # $HEADER$
-# $NAMES$
+# $NAME$
 
 #
 # Program:	libraryload.py
@@ -96,13 +96,16 @@
 #	6.  Verify the Cell Line
 #	    If the verification fails, report the error and skip the record.
 #
-#	7.  Verify the Reference (J:)
+#	7.  Verify the Library Accession Name
 #	    If the verification fails, report the error and skip the record.
 #
-#	8.  If the Library cannot be found in the database, create PRB_Source, ACC_Accession
+#	8.  Verify the Reference (J:)
+#	    If the verification fails, report the error and skip the record.
+#
+#	9.  If the Library cannot be found in the database, create PRB_Source, ACC_Accession
 #	    records for the MGI object.
 #
-#	9.  If the Library can be found in the database, update any attribure which
+#	10. If the Library can be found in the database, update any attribure which
 #	    has not been modified by a curator.
 #
 
@@ -153,8 +156,6 @@ mgiTypeKey = ''		# mgi type key of library record
 
 cdate = mgi_utils.date('%m/%d/%Y')	# current date
 
-libColNames  = ['name', '_Refs_key', '_Organism_key', '_Strain_key', '_Tissue_key', 'age', 'sex', 'cellLine']
-
 # Library attributes
 
 libraryKey = ''
@@ -193,7 +194,7 @@ def exit(
     message = None   # exit message (string)
     ):
 
-    # Purpose:
+    # Purpose: writes message to error log and exits
     # Returns: nothing
     # Assumes: nothing
     # Effects: nothing
@@ -421,10 +422,10 @@ def verifyReference(
     # Purpose: verifies the Reference
     # Returns: 0 if the Reference value does not exist in MGI
     #		else the primary key of the Reference
-    # Assumes:
+    # Assumes: nothing
     # Effects: saves the Reference/primary key in a dictionary for faster lookup
     #          writes to the error log if the Reference is invalid
-    # Throws:
+    # Throws: nothing
 
     global referenceDict
 
@@ -449,9 +450,9 @@ def verifyGender(
     # Purpose: verifies the Gender
     # Returns: 0 if the Gender value is invalid
     #		else the Gender value
-    # Assumes:
+    # Assumes: nothing
     # Effects: writes to the error log if the Gender is invalid
-    # Throws:
+    # Throws: nothing
 
     if gender in genderList:
         return(gender)
@@ -467,10 +468,10 @@ def verifyStrain(
     # Purpose: verifies the Strain
     # Returns: 0 if the Strain
     #		else the primary key of the Strain
-    # Assumes:
+    # Assumes: nothing
     # Effects: saves the Strain/primary key in a dictionary for faster lookup
     #          writes to the error log if the Gender is invalid
-    # Throws:
+    # Throws: nothing
 
     global strainDict
 
@@ -497,10 +498,10 @@ def verifyTissue(
     # Purpose: verifies the Strain
     # Returns: 0 if the Strain
     #		else the primary key of the Strain
-    # Assumes:
+    # Assumes: nothing
     # Effects: saves the Strain/primary key in a dictionary for faster lookup
     #          writes to the error log if the Gender is invalid
-    # Throws:
+    # Throws: nothing
 
     global tissueDict
 
@@ -518,9 +519,9 @@ def verifyTissue(
 def processFile():
     # Purpose: processes input file
     # Returns: nothing
-    # Assumes:
-    # Effects:
-    # Throws:
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
 
     global library, libraryID, libraryKey, logicalDBKey
     global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
@@ -605,9 +606,9 @@ def processFile():
 def addLibrary():
     # Purpose: writes bcp records for a new library
     # Returns: nothing
-    # Assumes:
-    # Effects:
-    # Throws:
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
 
     # write master Library record
     bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, \
@@ -624,9 +625,9 @@ def addLibrary():
 def updateLibrary():
     # Purpose: update the Clone Library record with the new values
     # Returns: nothing
-    # Assumes:
-    # Effects:
-    # Throws:
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
 
     # for the given Library, read in each attribute and its current value
 
@@ -714,9 +715,9 @@ def bcpWrite(
     # Purpose: converts each value item to a string and writes out the values
     #          to the bcpFile using the appropriate delimiter
     # Returns: nothing
-    # Assumes:
-    # Effects:
-    # Throws:
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
 
     # convert all members of values to strings
     strvalues = []
@@ -725,12 +726,14 @@ def bcpWrite(
 
     fp.write('%s\n' % (string.join(strvalues, BCPDELIM)))
 
+    return
+
 def bcpFiles():
     # Purpose: BCPs data files into appropriate database tables
     # Returns: nothing
-    # Assumes:
-    # Effects:
-    # Throws:
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
 
     libraryFile.close()
     accFile.close()
@@ -753,6 +756,8 @@ def bcpFiles():
     os.system(cmd1)
     os.system(cmd2)
 
+    return
+
 #
 # Main
 #
@@ -765,4 +770,7 @@ exit(0)
 
 
 # $Log$
+# Revision 1.13  2003/03/12 16:58:21  lec
+# revised to use coding standards
+#
 
