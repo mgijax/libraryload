@@ -266,7 +266,7 @@ def processFile():
 		age = 'embryonic day 8.5'
 
             elif libraryID == 'cDNA40':
-		tissue = 'genital ridge/mesonephros'
+		tissue = 'genital ridge and mesonephros'
 		age = 'embryonic day 12.5'
 
             elif libraryID == 'cDNA24':
@@ -320,7 +320,7 @@ def processFile():
 		age = 'embryonic day 7.5'
 
             elif libraryID == 'cDNA19':
-		tissue = 'genital ridge/mesonephros'
+		tissue = 'genital ridge and mesonephros'
 		age = 'embryonic day 12.5'
 		gender = 'Female'
 
@@ -411,6 +411,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.1.2.2  2004/03/10 15:06:28  lec
+# NIA
+#
 # Revision 1.1.2.1  2004/03/09 19:03:12  lec
 # mgi 298
 #
