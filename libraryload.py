@@ -841,14 +841,14 @@ def updateLibrary():
 		elif r['colName'] == 'cellLine':
 
 			if r['value'] == None:
-				newValue = "NULL"
-			else:
-				newValue = r['value']
-
-			if len(cellLine) == 0:
 				currValue = "NULL"
 			else:
-				currValue = cellLine
+				currValue = r['value']
+
+			if len(cellLine) == 0:
+				newValue = "NULL"
+			else:
+				newValue = cellLine
 
 			if newValue != currValue:
 				if newValue == "NULL":
