@@ -177,7 +177,7 @@ def processFile():
 					note + TAB + \
 					createdBy + CRT)
 
-			libraryName = tokens[1]
+			libraryName = string.strip(tokens[1])
 			libraryID = ''
 			strain = NS
 			gender = NS
