@@ -101,11 +101,19 @@ CRT = '\n'
 inputFile = ''		# file descriptor of input file
 outputFile = ''		# file descriptor of output file
 errorFile = ''		# file descriptor of error file
+tissueFile = ''		# file descriptor of tissue file
+ageFile = ''		# file descriptor of age file
 
 NS = 'Not Specified'
 logicalDBName = 'IMAGE Clone Libraries'
 jnum = 'J:57656'
 createdBy = 'library_load'
+tissueFileName = 'imagetissue.trans'
+ageFileName= 'imageage.trans'
+
+tissueLookup = {}
+treatmentLookup = {}
+ageLookup = {}
 
 organismLookup = {'Mus musculus':'mouse, laboratory'}
 
@@ -172,7 +180,8 @@ def exit(
 # Throws:  nothing
      
 def init():
-    global inputFile, outputFile, errorFile
+    global inputFile, outputFile, errorFile, tissueFile, ageFile
+    global tissueLookup, treatmentLookup, ageLookup
      
     try:
         optlist, args = getopt.getopt(sys.argv[1:], 'I:')
@@ -200,6 +209,16 @@ def init():
         exit(1, 'Could not open file %s\n' % inputFileName)
 		    
     try:
+        tissueFile = open(tissueFileName, 'r')
+    except:
+        exit(1, 'Could not open file %s\n' % tissueFileName)
+		    
+    try:
+        ageFile = open(ageFileName, 'r')
+    except:
+        exit(1, 'Could not open file %s\n' % ageFileName)
+		    
+    try:
         outputFile = open(outputFileName, 'w')
     except:
         exit(1, 'Could not open file %s\n' % outputFileName)
@@ -209,6 +228,22 @@ def init():
     except:
         exit(1, 'Could not open file %s\n' % errorFileName)
 		
+    for line in tissueFile.readlines():
+        tokens = string.split(line[:-1], TAB)
+	key = tokens[0] + ':' + tokens[1]
+	value = tokens[2]
+	tissueLookup[key] = value
+	if len(tokens) > 3:
+	    treatmentLookup[key] = tokens[3]
+    tissueFile.close()
+
+    for line in ageFile.readlines():
+        tokens = string.split(line[:-1], TAB)
+	key = tokens[0] + ':' + tokens[1]
+	value = tokens[2]
+	ageLookup[key] = value
+    ageFile.close()
+
     return
 
 # Purpose: read input file, write output file
@@ -224,29 +259,26 @@ def processFile():
 
         tokens = string.split(line[:-1], TAB)
 
-        try:
-	    inLibraryName = tokens[0]
-	    inLibraryID = tokens[1]
-	    inOrganism = tokens[2]
-	    inOrgan = tokens[3]
-	    inTissue = tokens[4]
-#	    inHost = tokens[5]
-#	    inVector = tokens[6]
-	    inVectorType = tokens[7]
-#	    inRe3 = tokens[8]
-#	    inRe5 = tokens[9]
-	    inDescription = tokens[10]
-#	    inLinker3 = tokens[11]
-#	    inLinker5 = tokens[12]
-#	    inLibraryPriming = tokens[13]
-#	    inSourceAge = tokens[14]
-	    inSourceSex = tokens[15]
-	    inSourceStage = tokens[16]
-	    inSourceDesc = tokens[17]
-#	    inSeqTag = tokens[18]
-	    inStrain = tokens[19]
-        except:
-            pass
+	inLibraryName = tokens[0]
+	inLibraryID = tokens[1]
+	inOrganism = tokens[2]
+	inOrgan = tokens[3]
+	inTissue = tokens[4]
+#	inHost = tokens[5]
+#	inVector = tokens[6]
+	inVectorType = tokens[7]
+#	inRe3 = tokens[8]
+#	inRe5 = tokens[9]
+	inDescription = tokens[10]
+#	inLinker3 = tokens[11]
+#	inLinker5 = tokens[12]
+#	inLibraryPriming = tokens[13]
+#	inSourceAge = tokens[14]
+	inSourceSex = tokens[15]
+	inSourceStage = tokens[16]
+	inSourceDesc = tokens[17]
+#	inSeqTag = tokens[18]
+	inStrain = tokens[19]
 
         if not organismLookup.has_key(inOrganism):
 	    continue
@@ -255,7 +287,6 @@ def processFile():
 
 	segmentType = NS
         strain = NS
-        tissue = inOrgan
         age = NS
         cellLine = ''
 
@@ -265,12 +296,29 @@ def processFile():
 	gender = sexLookup[inSourceSex]
 
 	if strainLookup.has_key(inStrain):
-		strain = strainLookup[inStrain]
+	    strain = strainLookup[inStrain]
 	else:
-		strain = inStrain
+	    strain = inStrain
 
 	# use inSourceStage + inSourceDesc to resolve Age
+	lookupAge = inSourceStage + ':' + inSourceDesc
+	if ageLookup.has_key(lookupAge):
+	    age = ageLookup[lookupAge]
+        else:
+	    age = NS
+
 	# use inOrgan + inTissue to resolve Tissue
+	lookupTissue = inOrgan + ':' + inTissue
+	if tissueLookup.has_key(lookupTissue):
+	    tissue = tissueLookup[lookupTissue]
+        else:
+	    tissue = inOrgan
+
+	if treatmentLookup.has_key(lookupTissue):
+	    description = treatmentLookup[lookupTissue]
+        else:
+#	    description = inDescription
+	    description = ''
 
         outputFile.write(inLibraryName + TAB + \
                          logicalDBName + TAB + \
@@ -284,7 +332,7 @@ def processFile():
                          gender + TAB + \
                          cellLine + TAB + \
                          jnum + TAB + \
-                         inDescription + TAB + \
+                         description + TAB + \
                          createdBy + CRT)
 
     return
@@ -298,6 +346,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.12  2004/01/22 17:46:21  lec
+# new IMAGE
+#
 # Revision 1.11  2003/03/24 17:58:43  lec
 # libraryload-1-0-5
 #
