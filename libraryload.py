@@ -802,13 +802,19 @@ def updateLibrary():
 		'and _Object_key = %s ' % (libraryKey) + \
 		'and modifiedBy like "%load"', 'auto')
 
+	# for each column which can be updated, retrieve its current value
+
 	cmds = []
 	for r in results:
 		cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (r['columnName'], r['columnName']) + \
 			'from PRB_Source where _Source_key = %s' % (libraryKey))
 	
 	results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
+
 	for r in results:
+
+		# if the value has changed, update it
+
 		if r['colName'] == 'name' and r['value'] != library:
 			setCmds.append('%s = "%s"' % (r['colName'], library))
 
