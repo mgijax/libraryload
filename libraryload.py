@@ -434,7 +434,7 @@ def processFile():
         tissueKey = sourceloadlib.verifyTissue(tissue, lineNum, errorFile)
         gender = sourceloadlib.verifySex(gender, lineNum, errorFile)
         ageMin, ageMax = sourceloadlib.verifyAge(age, lineNum, errorFile)
-	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
+#	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
 
         if segmentTypeKey == 0 or \
 	   vectorTypeKey == 0 or \
@@ -442,8 +442,8 @@ def processFile():
            referenceKey == 0 or \
            strainKey == 0 or \
            tissueKey == 0 or \
-           gender == 0 or \
-	   userKey == 0
+           gender == 0:
+#	   userKey == 0:
             # set error flag to true
             error = 1
 
@@ -654,7 +654,8 @@ def bcpFiles():
         return
 
     os.system(cmd1)
-    os.system(cmd2)
+#    os.system(cmd2)
+    os.system(cmd3)
 
     return
 
@@ -670,6 +671,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.21  2004/01/28 17:15:54  lec
+# libraryload.py.jsam
+#
 # Revision 1.20  2004/01/27 20:02:57  lec
 # TR 5020
 #
