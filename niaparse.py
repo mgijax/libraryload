@@ -243,6 +243,8 @@ def processFile():
 		strain = 'C3H/He'
             elif strain == '129/Sv x 129/Sv-CP':
 		strain = '129/Sv x 129/Sv-p Tyr<c>'
+            elif strain == 'CD1':
+		strain = 'CD-1'
 
         elif string.find(line[:-1], 'Sex') >= 0:
 
@@ -411,6 +413,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.2  2004/03/09 17:37:44  lec
+# JSAM
+#
 # Revision 1.1  2003/06/17 16:29:34  lec
 # new
 #
