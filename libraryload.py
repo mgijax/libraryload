@@ -199,7 +199,6 @@ ageMin = ''
 ageMax = ''
 gender = ''
 cellLine = ''
-userKey = ''
 
 def showUsage():
     # Purpose: displays correct usage of this program
@@ -381,7 +380,7 @@ def processFile():
 
     global libraryName, libraryID, libraryKey, logicalDBKey
     global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey
-    global age, ageMin, ageMax, gender, cellLine, userKey
+    global age, ageMin, ageMax, gender, cellLine
 
     lineNum = 0
 
@@ -425,7 +424,7 @@ def processFile():
         logicalDBKey = loadlib.verifyLogicalDB(logicalDB, lineNum, errorFile)
 
 	if libraryKey == 0:
-	    librarykey = sourceloadlib.verifyLibraryID(libraryID, logicalDBKey, lineNum, errorFile)
+	    libraryKey = sourceloadlib.verifyLibraryID(libraryID, logicalDBKey, lineNum, errorFile)
 
 	segmentTypeKey = sourceloadlib.verifySegmentType(segmentType, lineNum, errorFile)
 	vectorTypeKey = sourceloadlib.verifyVectorType(vectorType, lineNum, errorFile)
@@ -434,7 +433,6 @@ def processFile():
         tissueKey = sourceloadlib.verifyTissue(tissue, lineNum, errorFile)
         gender = sourceloadlib.verifySex(gender, lineNum, errorFile)
         ageMin, ageMax = sourceloadlib.verifyAge(age, lineNum, errorFile)
-	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
 
         if segmentTypeKey == 0 or \
 	   vectorTypeKey == 0 or \
@@ -442,8 +440,7 @@ def processFile():
            referenceKey == 0 or \
            strainKey == 0 or \
            tissueKey == 0 or \
-           gender == 0 or \
-	   userKey == 0
+           gender == 0:
             # set error flag to true
             error = 1
 
@@ -486,18 +483,12 @@ def addLibrary(
     bcpWrite(libraryFile, [libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
 	strainKey, tissueKey, referenceKey, libraryName, description, \
 	age, ageMin, ageMax, gender, cellLine, loaddate, loaddate])
-#	age, ageMin, ageMax, gender, cellLine, userKey, userKey, loaddate, loaddate])
-
-    # write MGI_AttributeHistory records
-#    for colName in libColNames:
-#        bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, userKey, userKey, cdate, cdate])
 
     # write Accession records
     if len(libraryID) > 0:
         prefixpart, numericpart = accessionlib.split_accnum(libraryID)
         bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
 	    0, 1, loaddate, loaddate, loaddate])
-#	    0, 1, userKey, userKey, loaddate, loaddate])
 
     return
 
@@ -670,6 +661,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.21  2004/01/28 17:15:54  lec
+# libraryload.py.jsam
+#
 # Revision 1.20  2004/01/27 20:02:57  lec
 # TR 5020
 #
