@@ -51,10 +51,9 @@
 #
 # Output:
 #
-#       3 BCP files:
+#       2 BCP files:
 #
 #       PRB_Source.bcp         		Library
-#       MGI_AttributeHistory.bcp        Attribute History
 #       ACC_Accession.bcp        	Accession table
 #
 #	Diagnostics file of all input parameters and SQL commands
@@ -126,8 +125,6 @@ passwordFileName = ''	# file name
 
 libraryFile = ''	# file descriptor
 libraryFileName = ''	# file name
-historyFile = ''	# file descriptor
-historyFileName = ''	# file name
 accFile = ''		# file descriptor
 accFileName = ''	# file name
 
@@ -208,7 +205,6 @@ def exit(status, message = None):
 		diagFile.close()
 		errorFile.close()
 		libraryFile.close()
-		historyFile.close()
 		accFile.close()
 	except:
 		pass
@@ -231,7 +227,7 @@ def init():
 	'''
  
 	global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-	global libraryFile, libraryFileName, historyFile, historyFileName, accFile, accFileName
+	global libraryFile, libraryFileName, accFile, accFileName
 	global mode, mgiTypeKey
 	global genderDict, tissueDict, organismDict, libraryDict
 	global newlibraryKey, accKey
@@ -287,7 +283,6 @@ def init():
 	diagFileName = tail + '.' + fdate + '.diagnostics'
 	errorFileName = tail + '.' + fdate + '.error'
 	libraryFileName = tail + '.' + fdate + '.PRB_Source.bcp'
-	historyFileName = tail + '.' + fdate + '.MGI_AttributeHistory.bcp'
 	accFileName = tail + '.' + fdate + '.ACC_Accession.bcp'
 
 	try:
@@ -309,11 +304,6 @@ def init():
 		libraryFile = open(libraryFileName, 'w')
 	except:
 		exit(1, 'Could not open file %s\n' % libraryFileName)
-		
-	try:
-		historyFile = open(historyFileName, 'w')
-	except:
-		exit(1, 'Could not open file %s\n' % historyFileName)
 		
 	try:
 		accFile = open(accFileName, 'w')
@@ -727,11 +717,8 @@ def addLibrary():
 	global accKey
 
 	# write master Library record
-	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy, createdBy, cdate, cdate])
-
-	# write MGI_AttributeHistory records
-	for colName in libColNames:
-		bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, createdBy, createdBy, cdate, cdate])
+	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
+#	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
 
 	# write ACC_Accession and ACC_AccessionReference records
 	if len(libraryID) > 0:
@@ -771,8 +758,8 @@ def updateLibrary():
 	# for each column which can be updated, retrieve its current value
 
 	cmds = []
-	for r in results:
-		cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (r['columnName'], r['columnName']) + \
+	for columnName in ['name', '_Refs_key', '_ProbeSpecies_key', '_Strain_key', '_Tissue_key', 'age', 'sex', 'cellLine']:
+		cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (columnName, columnName) + \
 			'from PRB_Source where _Source_key = %s' % (libraryKey))
 
 	results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
@@ -787,7 +774,7 @@ def updateLibrary():
 		elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
 			setCmds.append('%s = %s' % (r['colName'], referenceKey))
 
-		elif r['colName'] == '_Organism_key' and r['value'] != str(organismKey):
+		elif r['colName'] == '_ProbeSpecies_key' and r['value'] != str(organismKey):
 			setCmds.append('%s = %s' % (r['colName'], organismKey))
 
 		elif r['colName'] == '_Strain_key' and r['value'] != str(strainKey):
@@ -823,7 +810,6 @@ def updateLibrary():
 					setCmds.append('%s = "%s"' % (r['colName'], newValue))
 
 	if len(setCmds) > 0:
-		setCmds.append('modifiedBy = "%s"' % (createdBy))
 		setCmds.append('modification_date = getdate()')
 		setCmd = string.join(setCmds, ',')
 		db.sql('update PRB_Source set %s where _Source_key = %s' % (setCmd, libraryKey), None, execute = not DEBUG)
@@ -875,7 +861,6 @@ def bcpFiles():
 	'''
 
 	libraryFile.close()
-	historyFile.close()
 	accFile.close()
 
 	cmd1 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
@@ -886,12 +871,6 @@ def bcpFiles():
 
 	cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
 		% (passwordFileName, db.get_sqlDatabase(), \
-	   	'MGI_AttributeHistory', historyFileName, bcpdelim, db.get_sqlServer(), db.get_sqlUser())
-
-	diagFile.write('%s\n' % cmd2)
-
-	cmd3 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-		% (passwordFileName, db.get_sqlDatabase(), \
 	   	'ACC_Accession', accFileName, bcpdelim, db.get_sqlServer(), db.get_sqlUser())
 
 	diagFile.write('%s\n' % cmd3)
@@ -899,9 +878,8 @@ def bcpFiles():
 	if DEBUG:
 		return
 
-	os.system(cmd1)
-	os.system(cmd2)
-	os.system(cmd3)
+#	os.system(cmd1)
+#	os.system(cmd2)
 #	db.sql('dump transaction %s with truncate_only' % (db.get_sqlDatabase()), None, execute = not DEBUG)
 
 #
