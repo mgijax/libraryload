@@ -784,7 +784,7 @@ def updateLibrary():
 			if len(cellLine) == 0:
 				setCmds.append('%s = NULL' % (r['columnName']))
 			else:
-				setCmds.append('%s = %s' % (r['columnName'], cellLine))
+				setCmds.append('%s = "%s"' % (r['columnName'], cellLine))
 
 	if len(setCmds) > 0:
 		setCmds.append('modifiedBy = "%s"' % (createdBy))

@@ -121,7 +121,7 @@ def init():
                 else:
                         showUsage()
 
-	if inputFileName == '' or outputFileName == '':
+	if inputFileName == '':
 		showUsage()
 
 	outputFileName = inputFileName + '.lib'
