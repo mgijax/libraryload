@@ -425,6 +425,10 @@ def verifyAge(age, lineNum):
 
 	ageMin, ageMax = agelib.ageMinMax(age)
 
+	if ageMin == None:
+		ageMin = -1
+		ageMax = -1
+
 #	if ageMin == None:
 #		errorFile.write('Invalid Age (line: %d) %s\n' % (lineNum, age))
 
@@ -740,6 +744,7 @@ def updateLibrary():
 	#
 	# effects:
 	#	update the Clone Library record with the new values
+	#	we don't actually check to see if any changes have been made...
 	#	if the attribute has been modified by a Curator, then do not overwrite the value
 	#
 	# returns:
@@ -750,7 +755,7 @@ def updateLibrary():
 	setCmds = []
 
 	#
-	# read in columns which can be updated
+	# only read in columns which can be updated
 	#
 
 	results = db.sql('select columnName from MGI_AttributeHistory ' + \
