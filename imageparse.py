@@ -14,6 +14,8 @@
 #
 # Requirements Satisfied by This Program:
 #
+#	JSAM (TR 3404
+#
 # Usage:
 #        imageparse.py -I input file
 #
@@ -78,9 +80,18 @@
 #
 # Implementation:
 #
-# For each line in the input file:
-#    if a new record is encountered, write the previously parsed record
-#    else parse each line and translate each value into a corresponding, valid MGI value
+#	Modules:
+#
+#	def showUsage():	prints usage of this program and exits
+#	def exit():		prints message to stderr and exists
+#	def init():		processes inputs; initializes globals
+#	def processFile():	processes input file
+#
+#	Algorithm:
+#
+# 	For each line in the input file:
+#    		if a new record is encountered, write the previously parsed record
+#    		else parse each line and translate each value into a corresponding, valid MGI value
 #
 
 import sys
@@ -452,5 +463,8 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.9  2003/03/12 16:58:20  lec
+# revised to use coding standards
+#
 #
 

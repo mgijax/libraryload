@@ -63,50 +63,74 @@
 #	Diagnostics file of all input parameters and SQL commands
 #	Error file
 #
+# Exit Codes:
+#
+#	1 if successful
+#	0 if unsuccessful
+#
 # Assumes:
 #
 #      That this program has exclusive access to the database
 #      since it is creating new Accession records.
 #
+#
+# Bugs:
+#
 # Implementation:
 #
 #	Modules:
 #
-#	1. Verify Mode.
-#		if mode = full:
-#		if mode = preview:  set "DEBUG" to True
+#	def showUsage():	prints usage of this program and exits
+#	def exit():		prints message to stderr and exists
+#	def init():		processes inputs; initializes globals
+#	def verifyMode():	verifies processing mode
+#	def verifyAge():	verifies age
+#	def verifyLibrary():	verifies library
+#	def verifyLogicalDB():	verifies library accession name
+#	def verifyReference():	verifies J#
+#	def verifyGender():	verifies gender
+#	def verifyStrain():	verifies strain
+#	def verifyTissue():	verifies tissue
+#	def processFile():	processes file; main processing loop
+#	def addLibrary():	creates bcp records for new library
+#	def updateLibrary():	updates existing library
+#	def bcpWrite():		writes values to bcp file
+#	def bcpFiles():		executes bcp for each bcp file
+#
+#	Tools Used:
+#		bcp		used to bulk-copy bcp files into database
+#
+#	Algorithm:
+#
+#	Verify Mode; if mode = preview:  set DEBUG to True, else DEBUG is False.
 #
 #	For each line in the input file:
 #
-#	1.  Verify the Organism
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Organism
 #
-#	2.  Verify the Strain
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Strain
 #
-#	3.  Verify the Tissue
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Tissue
 #
-#	4.  Verify the Age
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Age
 #
-#	5.  Verify the Gender
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Gender
 #
-#	6.  Verify the Cell Line
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Cell Line
 #
-#	7.  Verify the Library Accession Name
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Library Accession Name
 #
-#	8.  Verify the Reference (J:)
-#	    If the verification fails, report the error and skip the record.
+#	  . Verify the Reference (J:)
 #
-#	9.  If the Library cannot be found in the database, create PRB_Source, ACC_Accession
+#	  . If any verification fails, report the error and skip the record.
+#
+#	  . If the Library cannot be found in the database, create PRB_Source, ACC_Accession
 #	    records for the MGI object.
 #
-#	10. If the Library can be found in the database, update any attribure which
-#	    has not been modified by a curator.
+#	  . If the Library can be found in the database, update any attribute which
+#	    has not been modified by a curator.  Update the Library ID if it has been changed.
+#
+#	BCP the bcp files into the database
 #
 
 import sys
@@ -123,7 +147,8 @@ import mgi_utils
 DEBUG = 0		# set DEBUG to false unless preview mode is selected
 TAB = '\t'
 BCPDELIM = TAB
-REFERENCE = 'Reference'
+REFERENCE = 'Reference'	# ACC_MGIType.name for References
+MGITYPEKEY = 5		# ACC_MGIType._MGIType_key for libraries
 
 inputFile = ''		# file descriptor
 diagFile = ''		# file descriptor
@@ -145,14 +170,13 @@ accFileSuffix = '.%s.bcp' % (accTable)
 
 mode = ''		# processing mode
 
+# dictionaries & lists; used to facilitate controlled vocabulary lookups
 referenceDict = {}	# dictionary of Jnum and Reference keys
 strainDict = {}		# dictionary of Strain names and Strain keys
 tissueDict = {}		# dictionary of Tissue names and Tissue keys
+libraryDict = {}	# dictionary of Library names and Library keys
+logicalDict = {}	# dictionary of Logical DBs and Logical DB keys
 genderList = ['Female', 'Male', 'Pooled', 'Not Specified']	# list of valid Gender values
-libraryDict = {}	# dictionary of named Libraries
-logicalDict = {}	# dictionary of Logical DBs
-
-mgiTypeKey = ''		# mgi type key of library record
 
 cdate = mgi_utils.date('%m/%d/%Y')	# current date
 
@@ -160,7 +184,7 @@ cdate = mgi_utils.date('%m/%d/%Y')	# current date
 
 libraryKey = ''
 description = ''
-library = ''
+libraryName = ''
 libraryID = ''
 logicalDBKey = ''
 referenceKey = ''
@@ -228,7 +252,7 @@ def init():
 
     global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
     global libraryFile, libraryFileName, accFile, accFileName
-    global mode, mgiTypeKey
+    global mode
  
     try:
         optlist, args = getopt.getopt(sys.argv[1:], 'S:D:U:P:M:I:')
@@ -318,11 +342,6 @@ def init():
 
     errorFile.write('Start Date/Time: %s\n\n' % (mgi_utils.date()))
 
-    # retrieve mgiTypeKey
-    results = db.sql('select _MGIType_key from ACC_MGIType where name = "Source"', 'auto')
-    for r in results:
-        mgiTypeKey = r['_MGIType_key']
-
     return
 
 def verifyMode():
@@ -365,7 +384,7 @@ def verifyAge(
     return (ageMin, ageMax)
 
 def verifyLibrary(
-    library,     # the Library value from the input file, string
+    libraryName, # the Library Name value from the input file, string
     lineNum      # the line number (from the input file) on which this value was found, integer
     ):
 
@@ -378,14 +397,14 @@ def verifyLibrary(
 
     global libraryDict
 
+    # if dictionary is empty, initialize it
     if len(libraryDict) == 0:
-        # initialize library dictionary
         results = db.sql('select _Source_key, name from %s where name is not null' % (libraryTable), 'auto')
         for r in results:
             libraryDict[r['name']] = r['_Source_key']
 
-    if libraryDict.has_key(library):
-        return(libraryDict[library])
+    if libraryDict.has_key(libraryName):
+        return(libraryDict[libraryName])
     else:
         return(0)
 
@@ -403,8 +422,8 @@ def verifyLogicalDB(
 
     global logicalDict
 
+    # if dictionary is empty, initialize it
     if len(logicalDict) == 0:
-        # initialize logicalDB dictionary
         results = db.sql('select _LogicalDB_key, name from ACC_LogicalDB', 'auto')
         for r in results:
             logicalDict[r['name']] = r['_LogicalDB_key']
@@ -523,7 +542,7 @@ def processFile():
     # Effects: nothing
     # Throws: nothing
 
-    global library, libraryID, libraryKey, logicalDBKey
+    global libraryName, libraryID, libraryKey, logicalDBKey
     global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
 
     lineNum = 0
@@ -546,7 +565,7 @@ def processFile():
         # Split the line into tokens
 
         try:
-            [library, \
+            [libraryName, \
 	     logicalDB, \
 	     libraryID, \
 	     organism, \
@@ -562,7 +581,7 @@ def processFile():
             exit(1, 'Invalid Line (line: %d): %s\n' % (lineNum, line))
             continue
 
-        libraryKey = verifyLibrary(library, lineNum)
+        libraryKey = verifyLibrary(libraryName, lineNum)
         logicalDBKey = verifyLogicalDB(logicalDB, lineNum)
         referenceKey = verifyReference(jnum, lineNum)
         strainKey = verifyStrain(strain, lineNum)
@@ -611,13 +630,13 @@ def addLibrary():
     # Throws: nothing
 
     # write master Library record
-    bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, \
+    bcpWrite(libraryFile, [libraryKey, libraryName, description, referenceKey, organismKey, \
 	strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
 
     # write Accession records
     if len(libraryID) > 0:
         prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-        bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, \
+        bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
 	    0, 1, cdate, cdate, cdate])
 
     return
@@ -632,8 +651,8 @@ def updateLibrary():
     # for the given Library, read in each attribute and its current value
 
     setCmds = []
-
     cmds = []
+
     for columnName in ['name', '_Refs_key', '_ProbeSpecies_key', '_Strain_key', '_Tissue_key', 'age', 'sex', 'cellLine']:
         cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (columnName, columnName) + \
             'from %s where _Source_key = %s' % (libraryTable, libraryKey))
@@ -644,46 +663,45 @@ def updateLibrary():
 
     for r in results:
 
-		if r['colName'] == 'name' and r['value'] != library:
-			setCmds.append('%s = "%s"' % (r['colName'], library))
+        if r['colName'] == 'name' and r['value'] != library:
+                setCmds.append('%s = "%s"' % (r['colName'], library))
 
-		elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
-			setCmds.append('%s = %s' % (r['colName'], referenceKey))
+        elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
+                setCmds.append('%s = %s' % (r['colName'], referenceKey))
 
-		elif r['colName'] == '_ProbeSpecies_key' and r['value'] != str(organismKey):
-			setCmds.append('%s = %s' % (r['colName'], organismKey))
+        elif r['colName'] == '_ProbeSpecies_key' and r['value'] != str(organismKey):
+                setCmds.append('%s = %s' % (r['colName'], organismKey))
 
-		elif r['colName'] == '_Strain_key' and r['value'] != str(strainKey):
-			setCmds.append('%s = %s' % (r['colName'], strainKey))
+        elif r['colName'] == '_Strain_key' and r['value'] != str(strainKey):
+                setCmds.append('%s = %s' % (r['colName'], strainKey))
 
-		elif r['colName'] == '_Tissue_key' and r['value'] != str(tissueKey):
-			setCmds.append('%s = %s' % (r['colName'], tissueKey))
+        elif r['colName'] == '_Tissue_key' and r['value'] != str(tissueKey):
+                setCmds.append('%s = %s' % (r['colName'], tissueKey))
 
-		elif r['colName'] == 'age' and r['value'] != age:
-			setCmds.append('%s = "%s"' % (r['colName'], age))
-			setCmds.append('ageMin = %s' % (ageMin))
-			setCmds.append('ageMax = %s' % (ageMax))
+        elif r['colName'] == 'age' and r['value'] != age:
+                setCmds.append('%s = "%s"' % (r['colName'], age))
+                setCmds.append('ageMin = %s' % (ageMin))
+                setCmds.append('ageMax = %s' % (ageMax))
 
-		elif r['colName'] == 'sex' and r['value'] != gender:
-			setCmds.append('%s = "%s"' % (r['colName'], gender))
+        elif r['colName'] == 'sex' and r['value'] != gender:
+                setCmds.append('%s = "%s"' % (r['colName'], gender))
 
-		elif r['colName'] == 'cellLine':
+        elif r['colName'] == 'cellLine':
 
-			if r['value'] == None:
-				currValue = "NULL"
-			else:
-				currValue = r['value']
+            if r['value'] == None:
+                currValue = "NULL"
+            else:
+                currValue = r['value']
+            if len(cellLine) == 0:
+                newValue = "NULL"
+            else:
+                newValue = cellLine
 
-			if len(cellLine) == 0:
-				newValue = "NULL"
-			else:
-				newValue = cellLine
-
-			if newValue != currValue:
-				if newValue == "NULL":
-					setCmds.append('%s = NULL' % (r['colName']))
-				else:
-					setCmds.append('%s = "%s"' % (r['colName'], newValue))
+            if newValue != currValue:
+                if newValue == "NULL":
+                    setCmds.append('%s = NULL' % (r['colName']))
+                else:
+                    setCmds.append('%s = "%s"' % (r['colName'], newValue))
 
     # if there were any attribute value changes, then execute the update
 
@@ -770,6 +788,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.14  2003/03/12 17:04:34  lec
+# revised to use coding standards
+#
 # Revision 1.13  2003/03/12 16:58:21  lec
 # revised to use coding standards
 #
