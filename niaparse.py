@@ -229,6 +229,11 @@ def processFile():
 
             [label, vectorType] = string.split(line[:-1], '\t')
 
+	    if vectorType == 'plasmid':
+		vectorType = 'Plasmid'
+	    elif vectorType == 'phagemid':
+		vectorType = 'Phagemid'
+
         elif string.find(line[:-1], 'Strain') >= 0:
 
             [label, strain] = string.split(line[:-1], '\t')
@@ -250,8 +255,12 @@ def processFile():
 
             [label, gender] = string.split(line[:-1], '\t')
 
-            if gender == 'Unknown':
+            if gender == 'Unknown' or gender == 'unknown':
                 gender = 'Pooled'
+            elif gender == 'male':
+		gender = 'Male'
+            else:
+		gender = NS
 
         elif string.find(line[:-1], 'Stage') >= 0:
 
@@ -385,6 +394,8 @@ def processFile():
 	    elif tissue == 'ectoplacental cone':
 	        tissue = 'ectoplacental cone'
 
+            else:
+		tissue = NS
 
     if writeRecord:
         outputFile.write(libraryName + TAB + \
@@ -413,9 +424,6 @@ processFile()
 exit(0)
 
 # $Log$
-# Revision 1.2  2004/03/09 17:37:44  lec
-# JSAM
-#
 # Revision 1.1  2003/06/17 16:29:34  lec
 # new
 #
