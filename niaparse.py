@@ -225,6 +225,139 @@ def processFile():
 
             [label, libraryID] = string.split(line[:-1], '\t')
 
+	    if libraryID in ['cDNA30', 'cDNA31']:
+		tissue = 'embryo'
+		cellLine = 'embryonic stem cell line R1, undifferentiated'
+		gender = 'Male'
+
+            elif libraryID in ['cDNA32', 'cDNA33']:
+		tissue = 'embryo'
+		cellLine = 'embryonic stem cell line R1, differentiated'
+		gender = 'Male'
+
+            elif libraryID in ['cDNA36', 'cDNA37']:
+		tissue = 'trophoblast'
+		age = 'embryonic day 3.5'
+
+            elif libraryID in ['cDNA41', 'cDNA46', 'cDNA47', 'cDNA48']:
+		tissue = 'hematopoietic progenitor cells'
+		age = 'postnatal week 10'
+
+            elif libraryID == 'cDNA43':
+		tissue = 'osteoblast'
+
+            elif libraryID == 'cDNA44':
+		tissue = 'embryo'
+		cellLine = '9-15C'
+
+            elif libraryID == 'cDNA39':
+		tissue = 'blastocyst'
+		age = 'embryonic day 3.5'
+
+            elif libraryID == 'cDNA34':
+		tissue = 'embryo and extraembryonic component'
+		age = 'embryonic day 7.5'
+
+            elif libraryID == 'cDNA42':
+		tissue = 'unfertilized egg'
+
+            elif libraryID == 'cDNA49':
+		tissue = 'embryo and extraembryonic component'
+		age = 'embryonic day 8.5'
+
+            elif libraryID == 'cDNA40':
+		tissue = 'genital ridge and mesonephros'
+		age = 'embryonic day 12.5'
+
+            elif libraryID == 'cDNA24':
+		tissue = 'heart'
+		age = 'postnatal newborn'
+
+            elif libraryID == 'cDNA27':
+		tissue = 'brain'
+		age = 'postnatal newborn'
+
+            elif libraryID in ['cDNA28', 'cDNA29']:
+		tissue = 'kidney'
+		age = 'postnatal newborn'
+
+            elif libraryID == 'cDNA26':
+		tissue = 'B-lymphocyte'
+
+            elif libraryID == 'cDNA35':
+		tissue = 'dopaminergic cell'
+		age = 'embryonic day 13.5'
+
+            elif libraryID == 'cDNA12':
+		tissue = 'unfertilized egg'
+
+            elif libraryID == 'cDNA11':
+		tissue = 'fertilized egg'
+		age = 'embryonic day 0-0.9'
+
+            elif libraryID == 'cDNA14':
+		tissue = '2-cell embryo'
+		age = 'embryonic day 0.5-1.0'
+
+            elif libraryID == 'cDNA15':
+		tissue = '4-cell embryo'
+		age = 'embryonic day 1.0'
+
+            elif libraryID == 'cDNA16':
+		tissue = '8-cell embryo'
+		age = 'embryonic day 0.5-4.5'
+
+            elif libraryID == 'cDNA17':
+		tissue = '16-cell embryo'
+		age = 'embryonic day 2.0'
+
+            elif libraryID == 'cDNA7':
+		tissue = 'blastocyst'
+		age = 'embryonic day 3.5'
+
+            elif libraryID in ['cDNA18', 'cDNA21']:
+		tissue = 'embryo'
+		age = 'embryonic day 7.5'
+
+            elif libraryID == 'cDNA19':
+		tissue = 'genital ridge and mesonephros'
+		age = 'embryonic day 12.5'
+		gender = 'Female'
+
+            elif libraryID == 'cDNA20':
+		tissue = 'ovary'
+		age = 'postnatal newborn'
+		gender = 'Female'
+
+            elif libraryID == 'cDNA2':
+		tissue = 'ectoplacental cone'
+		age = 'embryonic day 7.5'
+
+            elif libraryID in ['L-S4', 'L-EII']:
+		tissue = 'connective tissue'
+		cellLine = 'LTK-'
+
+            elif libraryID == 'cDNA54':
+		tissue = 'neuroblast'
+		age = 'postnatal adult'
+
+            elif libraryID == 'cDNA55':
+		tissue = 'neuron'
+		age = 'postnatal adult'
+
+            elif libraryID == 'cDNA57':
+		tissue = 'germ cells'
+		age = 'embryonic dat 8.0'
+		gender = 'Male'
+
+            elif libraryID == 'cDNA58':
+		tissue = 'embryo and extraembryonic component'
+		age = 'embryonic day 9.5'
+
+            elif libraryID == 'cDNA59':
+		tissue = 'embryo and extraembryonic component'
+		age = 'embryonic day 6.5'
+
         elif string.find(line[:-1], 'V_Type') >= 0:
 
             [label, vectorType] = string.split(line[:-1], '\t')
@@ -250,152 +383,6 @@ def processFile():
 		strain = '129/Sv x 129/Sv-p Tyr<c>'
             elif strain == 'CD1':
 		strain = 'CD-1'
-
-        elif string.find(line[:-1], 'Sex') >= 0:
-
-            [label, gender] = string.split(line[:-1], '\t')
-
-            if gender == 'Unknown' or gender == 'unknown':
-                gender = 'Pooled'
-            elif gender == 'male':
-		gender = 'Male'
-            else:
-		gender = NS
-
-        elif string.find(line[:-1], 'Stage') >= 0:
-
-            [label, stage] = string.split(line[:-1], '\t')
-
-	    if stage == 'R1 ES cells':
-		cellLine = 'embryonic stem cell line R1, undifferentiated'
-	    elif stage == 'Whole embryo including extraembryonic tissues at 8.5-days postcoitum':
-		age = 'embryonic day 8.5'
-	    elif stage == '3.5-dpc':
-		age = 'embryonic day 3.5'
-	    elif stage == '7.5-dpc' or stage == '7.5dpc Embryo' or stage == 'embryonic day 7.5 postconception':
-		age = 'embryonic day 7.5'
-	    elif stage == '12.5-dpc' or stage == '12.5dpc':
-		age = 'embryonic day 12.5'
-	    elif stage == '13.5-dpc':
-		age = 'embryonic day 13.5'
-	    elif stage == 'E6.5':
-		age = 'embryonic day 6.5'
-	    elif stage == 'E8':
-		age = 'embryonic day 8.0'
-	    elif stage == 'E9.5':
-		age = 'embryonic day 9.5'
-	    elif stage == 'Age ~10 weeks old':
-		age = 'postnatal week 10'
-	    elif stage == '2-cell stage embryo':
-		age = 'embryonic day 0.5'
-		tissue = '2-cell embryo'
-	    elif stage == '4-cell stage embryo':
-		age = 'embryonic day 1.0'
-		tissue = '4-cell embryo'
-	    elif stage == '8-cell stage embryo':
-		age = 'embryonic day 2.0'
-		tissue = '8-cell embryo'
-	    elif stage == '16-cell stage embryo':
-		age = 'embryonic day 2.0'
-		tissue = '16-cell embryo'
-            elif stage == 'Newborn Heart':
-		age = 'postnatal day 0.0'
-		tissue = 'heart'
-            elif stage == 'Newborn Brain':
-		age = 'postnatal day 0.0'
-		tissue = 'brain'
-            elif stage == 'Newborn Kidney':
-		age = 'postnatal day 0.0'
-		tissue = 'kidney'
-            elif stage == 'Newborn Ovary':
-		age = 'postnatal day 0.0'
-		tissue = 'ovary'
-            elif stage == 'Unfertilized Egg':
-		age = 'Not Applicable'
-		tissue = 'unfertilized egg'
-            elif stage == 'Fertilized Egg':
-		age = 'embryonic day 0-0.9'
-		tissue = 'fertilized egg'
-            elif stage == 'Adult':
-		age = 'postnatal adult'
-            elif stage == 'Mouse Blastocyst stage embryo':
-		age = 'Not Specified'
-		tissue = 'blastocyst'
-
-        elif string.find(line[:-1], 'Tissue') >= 0:
-
-            [label, tissue] = string.split(line[:-1], '\t')
-
-#	    if tissue == 'Undifferentiated Embryonic Stem Cell':
-
-#	    elif tissue == 'Embryonic Stem Cell (LIF-)':
-
-#	    elif tissue == 'Embryonic Germ Cell':
-
-#	    elif tissue == 'Genital Ridge/Mesonephros':
-
-#	    elif tissue == 'Dopamine Cell':
-
-#	    elif tissue == 'Neural Stem Cell (Undifferentiated)':
-
-#	    elif tissue == 'Neural Stem Cell (Differentiated)':
-
-	    if tissue == 'Trophoblast Stem Cell':
-		tissue = 'trophoblast'
-
-	    elif tissue == 'Hematopoietic Stem Cell (Lin-/c-Kit+/Sca-1-)':
-		tissue = 'hematopoietic'
-
-	    elif tissue == 'Hematopoietic Stem Cell (Lin-/c-Kit+/Sca-1+)':
-		tissue = 'hematopoietic'
-
-	    elif tissue == 'Osteoblast':
-		tissue = 'osteoblast'
-
-	    elif tissue == 'Mesenchymal Stem Cell':
-		tissue = 'mesenchyme'
-
-	    elif tissue == 'Blastocyst':
-		tissue = 'blastocyst'
-
-	    elif tissue == 'whole embryo including extraembryonic tissues at 6.5-days postcoitum':
-		tissue = 'embryo and extraembryonic component'
-
-	    elif tissue == 'whole embryo including extraembryonic tissues at 7.5-days postcoitum':
-		tissue = 'embryo and extraembryonic component'
-
-	    elif tissue == 'whole embryo including extraembryonic tissues at 8.5-days postcoitum':
-		tissue = 'embryo and extraembryonic component'
-
-	    elif tissue == 'whole embryo including extraembryonic tissues at 9.5-days postcoitum':
-		tissue = 'embryo and extraembryonic component'
-
-	    elif tissue == 'Unfertilized Egg':
-		tissue = 'unfertilized egg'
-
-	    elif tissue == 'Newborn Heart':
-		tissue = 'heart'
-
-	    elif tissue == 'Newborn Brain':
-		tissue = 'brain'
-
-	    elif tissue == 'Newborn Kidney':
-		tissue = 'kidney'
-
-	    elif tissue == 'Germinal Center B Cell':
-		tissue = 'germ cells'
-
-	    elif tissue == '4-cell stage embryo':
-		tissue = '4-cell embryo'
-
-	    elif tissue == '8-cell stage embryo':
-		tissue = '8-cell embryo'
-
-	    elif tissue == 'ectoplacental cone':
-	        tissue = 'ectoplacental cone'
-
-            else:
-		tissue = NS
 
     if writeRecord:
         outputFile.write(libraryName + TAB + \
@@ -424,6 +411,18 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.1.2.3  2004/03/10 15:08:40  lec
+# NIA
+#
+# Revision 1.1.2.2  2004/03/10 15:06:28  lec
+# NIA
+#
+# Revision 1.1.2.1  2004/03/09 19:03:12  lec
+# mgi 298
+#
+# Revision 1.4  2004/03/09 18:03:47  lec
+# JSAM
+#
 # Revision 1.1  2003/06/17 16:29:34  lec
 # new
 #
