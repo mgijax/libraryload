@@ -614,11 +614,18 @@ def bcpFiles():
 
     diagFile.write('%s\n' % cmd2)
 
+    cmd3 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+        % (passwordFileName, db.get_sqlDatabase(), \
+        historyTable, historyFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
+
+    diagFile.write('%s\n' % cmd3)
+
     if DEBUG:
         return
 
     os.system(cmd1)
     os.system(cmd2)
+    os.system(cmd3)
 
     return
 
@@ -634,6 +641,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.24  2004/03/09 19:07:29  lec
+# JSAM
+#
 # Revision 1.18  2003/03/21 16:24:45  lec
 # LAF2
 #
