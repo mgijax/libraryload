@@ -153,7 +153,6 @@ libraryKey = ''
 description = ''
 library = ''
 libraryID = ''
-libraryIDKey = ''
 logicalDBKey = ''
 referenceKey = ''
 organismKey = ''
@@ -456,38 +455,6 @@ def verifyLibrary(library, lineNum):
 	else:
 		return(0)
 
-def verifyLibraryID(libraryID, lineNum):
-	'''
-	# requires:
-	#	libraryID - the Library ID
-	#	lineNum - the line number of the record from the input file
-	#
-	# effects:
-	#	verifies that the Library ID exists 
-	#
-	# returns:
-	#	0 if the libraryID should not be deleted (new library or same ID)
-	#	Accession key if library ID does exist and needs to be deleted
-	#	because the ID has changed.
-	#
-	'''
-
-	key = 0
-
-	if len(libraryID) == 0 or libraryKey == 0:
-		return(key)
-
-	results = db.sql('select _Accession_key, accID ' + \
-		'from PRB_Source_Acc_View ' + \
-		'where _LogicalDB_key = %s ' % (logicalDBKey) + \
-		'and _Object_key = %s ' % (libraryKey), 'auto')
-
-	for r in results:
-		if r['accID'] != libraryID:
-			key = r['_Accession_key']
-
-	return(key)
-
 def verifyLogicalDB(logicalDB, lineNum):
 	'''
 	# requires:
@@ -684,7 +651,7 @@ def processFile():
 	#
 	'''
 
-	global library, libraryID, libraryKey, libraryIDKey, logicalDBKey
+	global library, libraryID, libraryKey, logicalDBKey
 	global organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
 	global newlibraryKey
 
@@ -708,7 +675,6 @@ def processFile():
 
 		libraryKey = verifyLibrary(library, lineNum)
 		logicalDBKey = verifyLogicalDB(logicalDB, lineNum)
-		libraryIDKey = verifyLibraryID(libraryID, lineNum)
 		organismKey = verifyOrganism(organism, lineNum)
 		referenceKey = verifyReference(jnum, lineNum)
 		strainKey = verifyStrain(strain, lineNum)
@@ -808,7 +774,7 @@ def updateLibrary():
 	for r in results:
 		cmds.append('select colName = "%s", value = convert(varchar(255), %s) ' % (r['columnName'], r['columnName']) + \
 			'from PRB_Source where _Source_key = %s' % (libraryKey))
-	
+
 	results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
 
 	for r in results:
@@ -862,12 +828,16 @@ def updateLibrary():
 		setCmd = string.join(setCmds, ',')
 		db.sql('update PRB_Source set %s where _Source_key = %s' % (setCmd, libraryKey), None, execute = not DEBUG)
 
-	# accession id
-	if len(libraryID) > 0 and libraryIDKey:
-		db.sql('exec ACC_delete_byAccKey %s' % (libraryIDKey), None)
-		prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-		bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, mgiTypeKey, 0, 1, cdate, cdate, cdate])
-		accKey = accKey + 1
+	# if accession id has changed, update it
+	if len(libraryID) > 0:
+		results = db.sql('select _Accession_key, accID ' + \
+			'from PRB_Source_Acc_View ' + \
+			'where _LogicalDB_key = %s ' % (logicalDBKey) + \
+			'and _Object_key = %s ' % (libraryKey), 'auto')
+
+		for r in results:
+			if r['accID'] != libraryID:
+				db.sql('exec ACC_update %s, "%s"' % (r['_Accession_key'], libraryID), None)
 
 def bcpWrite(fp, values):
 	'''
