@@ -13,7 +13,6 @@
 #	To load library records into Library structures:
 #
 #	PRB_Source
-#	MGI_AttributeHistory
 #	ACC_Accession
 #
 # Requirements Satisfied by This Program:
@@ -61,8 +60,7 @@
 #       2 BCP files:
 #
 #       PRB_Source.bcp         		Library
-#	MGI_AttributeHistory.bcp	History
-#       ACC_Accession.bcp        	Accession
+#       ACC_Accession.bcp        	Accession table
 #
 #	Diagnostics file of all input parameters and SQL commands
 #	Error file
@@ -151,6 +149,7 @@ TAB = '\t'
 BCPDELIM = TAB
 REFERENCE = 'Reference'	# ACC_MGIType.name for References
 MGITYPEKEY = 5		# ACC_MGIType._MGIType_key for libraries
+isCuratoredEdited = 0
 
 inputFile = ''		# file descriptor
 diagFile = ''		# file descriptor
@@ -164,10 +163,6 @@ libraryFile = ''	# file descriptor
 libraryFileName = ''	# file name
 libraryTable = 'PRB_Source'
 libraryFileSuffix = '.%s.bcp' % (libraryTable)
-historyFile = ''	# file descriptor
-historyFileName = ''	# file name
-historyTable = 'MGI_AttributeHistory'
-historyFileSuffix = '.%s.bcp' % (historyTable)
 
 accFile = ''		# file descriptor
 accFileName = ''	# file name
@@ -179,7 +174,16 @@ mode = ''		# processing mode
 loaddate = loadlib.loaddate
 
 # Library Column Names (PRB_Source)
-libColNames = ['name','_Refs_key','_ProbeSpecies_key','_Strain_key','_Tissue_key','age','sex','cellLine']
+libColNames = ['name',
+    '_SegmentType_key',
+    '_Vector_key',
+    '_Refs_key',
+    '_Organism_key',
+    '_Strain_key',
+    '_Tissue_key',
+    '_Gender_key',
+    '_CellLine_key',
+    'age']
 
 # Library record attributes
 
@@ -194,11 +198,11 @@ organismKey = '1'
 referenceKey = ''
 strainKey = ''
 tissueKey = ''
+genderKey = ''
+cellLineKey = ''
 age = ''
 ageMin = ''
 ageMax = ''
-gender = ''
-cellLine = ''
 userKey = ''
 
 def showUsage():
@@ -238,7 +242,6 @@ def exit(
         diagFile.close()
         errorFile.close()
         libraryFile.close()
-	historyFile.close()
         accFile.close()
     except:
         pass
@@ -256,7 +259,7 @@ def init():
     # Throws: nothing
 
     global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-    global libraryFile, libraryFileName, historyFile, historyFileName, accFile, accFileName
+    global libraryFile, libraryFileName, accFile, accFileName
     global mode
  
     try:
@@ -306,7 +309,6 @@ def init():
     diagFileName = tail + '.' + fdate + '.diagnostics'
     errorFileName = tail + '.' + fdate + '.error'
     libraryFileName = tail + '.' + fdate + libraryFileSuffix
-    historyFileName = tail + '.' + fdate + historyFileSuffix
     accFileName = tail + '.' + fdate + accFileSuffix
 
     try:
@@ -328,11 +330,6 @@ def init():
         libraryFile = open(libraryFileName, 'w')
     except:
         exit(1, 'Could not open file %s\n' % libraryFileName)
-		
-    try:
-        historyFile = open(historyFileName, 'w')
-    except:
-        exit(1, 'Could not open file %s\n' % historyFileName)
 		
     try:
         accFile = open(accFileName, 'w')
@@ -380,8 +377,7 @@ def processFile():
     # Throws: nothing
 
     global libraryName, libraryID, libraryKey, logicalDBKey
-    global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey
-    global age, ageMin, ageMax, gender, cellLine, userKey
+    global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
 
     lineNum = 0
 
@@ -429,21 +425,24 @@ def processFile():
 
 	segmentTypeKey = sourceloadlib.verifySegmentType(segmentType, lineNum, errorFile)
 	vectorTypeKey = sourceloadlib.verifyVectorType(vectorType, lineNum, errorFile)
-        referenceKey = loadlib.verifyReference(jnum, lineNum, errorFile)
         strainKey = sourceloadlib.verifyStrain(strain, lineNum, errorFile)
         tissueKey = sourceloadlib.verifyTissue(tissue, lineNum, errorFile)
-        gender = sourceloadlib.verifySex(gender, lineNum, errorFile)
+        genderKey = sourceloadlib.verifyGender(gender, lineNum, errorFile)
+        cellLineKey = sourceloadlib.verifyCellLine(cellLine, lineNum, errorFile)
         ageMin, ageMax = sourceloadlib.verifyAge(age, lineNum, errorFile)
-#	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
+
+        referenceKey = loadlib.verifyReference(jnum, lineNum, errorFile)
+	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
 
         if segmentTypeKey == 0 or \
 	   vectorTypeKey == 0 or \
-	   organismKey == 0 or \
-           referenceKey == 0 or \
            strainKey == 0 or \
            tissueKey == 0 or \
-           gender == 0:
-#	   userKey == 0:
+           genderKey == 0 or \
+	   cellLineKey == 0 or \
+	   organismKey == 0 or \
+           referenceKey == 0 or \
+	   userKey == 0:
             # set error flag to true
             error = 1
 
@@ -468,8 +467,7 @@ def processFile():
 
 	# else, process existing library
         else:
-            updateLibrary(accKey)
-	    accKey = accKey + 1
+            updateLibrary()
 
     return
 
@@ -484,27 +482,18 @@ def addLibrary(
 
     # write master Library record
     bcpWrite(libraryFile, [libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
-	strainKey, tissueKey, referenceKey, libraryName, description, \
-	age, ageMin, ageMax, gender, cellLine, loaddate, loaddate])
-#	age, ageMin, ageMax, gender, cellLine, userKey, userKey, loaddate, loaddate])
-
-    # write MGI_AttributeHistory records
-#    for colName in libColNames:
-#        bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, userKey, userKey, cdate, cdate])
+	strainKey, tissueKey, genderKey, cellLineKey, referenceKey, libraryName, description, \
+	age, ageMin, ageMax, isCuratorEdited, userKey, userKey, loaddate, loaddate])
 
     # write Accession records
     if len(libraryID) > 0:
         prefixpart, numericpart = accessionlib.split_accnum(libraryID)
         bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
-	    0, 1, loaddate, loaddate, loaddate])
-#	    0, 1, userKey, userKey, loaddate, loaddate])
+	    0, 1, userKey, userKey, loaddate, loaddate])
 
     return
 
-def updateLibrary(
-    accKey	# primary key for accession id, integer
-    ):
-
+def updateLibrary():
     # Purpose: update the Clone Library record with the new values
     # Returns: nothing
     # Assumes: nothing
@@ -535,7 +524,7 @@ def updateLibrary(
         elif r['colName'] == '_Vector_key' and r['value'] != str(vectorTypeKey):
                 setCmds.append('%s = %s' % (r['colName'], vectorTypeKey))
 
-        elif r['colName'] == '_ProbeSpecies_key' and r['value'] != str(organismKey):
+        elif r['colName'] == '_Organism_key' and r['value'] != str(organismKey):
                 setCmds.append('%s = %s' % (r['colName'], organismKey))
 
         elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
@@ -547,41 +536,23 @@ def updateLibrary(
         elif r['colName'] == '_Tissue_key' and r['value'] != str(tissueKey):
                 setCmds.append('%s = %s' % (r['colName'], tissueKey))
 
+        elif r['colName'] == '_Gender_key' and r['value'] != str(genderKey):
+                setCmds.append('%s = %s' % (r['colName'], genderKey))
+
+        elif r['colName'] == '_CellLine_key' and r['value'] != str(cellLineKey):
+                setCmds.append('%s = %s' % (r['colName'], cellLineKey))
+
         elif r['colName'] == 'age' and r['value'] != age:
                 setCmds.append('%s = "%s"' % (r['colName'], age))
                 setCmds.append('ageMin = %s' % (ageMin))
                 setCmds.append('ageMax = %s' % (ageMax))
 
-        elif r['colName'] == 'sex' and r['value'] != gender:
-                setCmds.append('%s = "%s"' % (r['colName'], gender))
-
-        elif r['colName'] == 'cellLine':
-
-            if r['value'] == None:
-                currValue = "NULL"
-            else:
-                currValue = r['value']
-
-            if len(cellLine) == 0:
-                newValue = "NULL"
-            else:
-                newValue = cellLine
-
-            if newValue != currValue:
-		# don't overwrite a curated value with a null
-		if currvalue != "NULL" and newValue == "NULL":
-		    pass
-                elif newValue == "NULL":
-                    setCmds.append('%s = NULL' % (r['colName']))
-                else:
-                    setCmds.append('%s = "%s"' % (r['colName'], newValue))
-
     # if there were any attribute value changes, then execute the update
 
     if len(setCmds) > 0:
+        setCmds.append('_ModifiedBy_key = %s' % (userKey)
         setCmds.append('modification_date = getdate()')
         setCmd = string.join(setCmds, ',')
-	# note that the update trigger handles updates to the history records
         db.sql('update %s set %s where _Source_key = %s' % (libraryTable, setCmd, libraryKey), \
 	    None, execute = not DEBUG)
 
@@ -597,11 +568,6 @@ def updateLibrary(
         for r in results:
             if r['accID'] != libraryID:
                 db.sql('exec ACC_update %s, "%s"' % (r['_Accession_key'], libraryID), None)
-
-	if len(results) == 0:
-            prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-            bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
-	        0, 1, loaddate, loaddate, loaddate])
 
     return
 
@@ -642,24 +608,17 @@ def bcpFiles():
 
     diagFile.write('%s\n' % cmd1)
 
-#    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-#        % (passwordFileName, db.get_sqlDatabase(), \
-#        historyTable, historyFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
-#
-#    diagFile.write('%s\n' % cmd2)
-
-    cmd3 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
         % (passwordFileName, db.get_sqlDatabase(), \
         accTable, accFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
 
-    diagFile.write('%s\n' % cmd3)
+    diagFile.write('%s\n' % cmd2)
 
     if DEBUG:
         return
 
     os.system(cmd1)
-#    os.system(cmd2)
-    os.system(cmd3)
+    os.system(cmd2)
 
     return
 
@@ -675,18 +634,6 @@ exit(0)
 
 
 # $Log$
-# Revision 1.22  2004/01/28 17:52:06  lec
-# JSAM
-#
-# Revision 1.21  2004/01/28 17:15:54  lec
-# libraryload.py.jsam
-#
-# Revision 1.20  2004/01/27 20:02:57  lec
-# TR 5020
-#
-# Revision 1.19  2004/01/27 17:48:25  lec
-# TR 5020
-#
 # Revision 1.18  2003/03/21 16:24:45  lec
 # LAF2
 #
