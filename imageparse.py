@@ -283,22 +283,115 @@ def processFile():
 				elif tissue == 'whole embryo':
 					tissue = 'embryo'
 
-		elif tokens[0] == 'STAGE':
+		elif tokens[0] in ['STAGE', 'AGE']:
 
-			try:
-				s = string.split(token1, ' ')
-				d = string.split(s, 'dpc')
+			if token1 == 'juvenile':
+				age = 'postnatal'
+			elif token1 in ['7 day juvenile', 'juvenile (7 days old)']:
+				age = 'postnatal day 7'
+			elif token1 == 'adult (22-24 days old)':
+				age = 'postnatal day 22-24'
+			elif token1 == '60 day':
+				age = 'postnatal day 60'
+			elif token1 == '3 weeks':
+				age = 'postnatal week 3'
+			elif token1 == '4 weeks':
+				age = 'postnatal week 4'
+			elif token1 == '6 weeks':
+				age = 'postnatal week 6'
+			elif token1 == '8 weeks':
+				age = 'postnatal week 8'
+			elif token1 == 'juvenile, 10 weeks':
+				age = 'postnatal week 10'
+			elif token1 == '10-12 week old':
+				age = 'postnatal week 10-12'
+			elif token1 == '10 months':
+				age = 'postnatal month 10'
+			elif token1 in ['10 week', '10 weeks']:
+				age = 'postnatal week 10'
+			elif token1 == '11 weeks old':
+				age = 'postnatal week 11'
+			elif token1 == '3 months, virgin':
+				age = 'postnatal month 3'
+			elif token1 == '5 months':
+				age = 'postnatal month 5'
+			elif token1 == '7 months':
+				age = 'postnatal month 7'
+			elif token1 == 'adult, age 9 months':
+				age = 'postnatal month 9'
+			elif token1 == 'juvenile, 13-15 days':
+				age = 'postnatal day 13-15'
 
-				if s[1] == 'embryos':
-					head = 'embryonic day '
+			elif token1 == 'embryo (pre-implantation)':
+				age = 'embryonic day 0.5-4.5'
+			elif token1 == 'day 1-4, mixed':
+				age = 'embryonic day 1.0-4.0'
+			elif token1 == '9-15C cells':
+				age = 'embryonic day 2.5-4.0'
+			elif token1 == '10.5 and 12.5 dpc, mixed':
+				age = 'embryonic day 10.5,12.5'
+			elif token1 == 'embryo, 9-12 dpc':
+				age = 'embryonic day 9.0-12.0'
+			elif token1 == 'embryo, day 10.5/11.5dpc':
+				age = 'embryonic day 10.5-11.5'
+			elif token1 == '3.5 dpc':
+				age = 'embryonic day 3.5'
+			elif token1 == 'embryo, 6.5 dpc':
+				age = 'embryonic day 6.5'
+			elif token1 == '7.25 dpc':
+				age = 'embryonic day 7.25'
+			elif token1 in ['7.5 dpc', '7.5dpc', 'embryo, 7.5 dpc', 'Whole embryo including extra embryonic tissues at 7.5dpc']:
+				age = 'embryonic day 7.5'
+			elif token1 in ['8 day', 'embryonic day 8.0']:
+				age = 'embryonic day 8.0'
+			elif token1 in ['8.5 dpc', '8.5dpc']:
+				age = 'embryonic day 8.5'
+			elif token1 == 'embryo, day 9':
+				age = 'embryonic day 9'
+			elif token1 in ['9.5 dpc', 'embryo - 9.5 dpc', 'Whole embryo including extra embryonic tissues at 9.5 dpc']:
+				age = 'embryonic day 9.5'
+			elif token1 in ['10.5dpc embryos', 'embryo, 10.5 dpc']:
+				age = 'embryonic day 10.5'
+			elif token1 in ['11.5dpc', 'embryo - 11.5 dpc']:
+				age = 'embryonic day 11.5'
+			elif token1 in ['12.5 dpc', '12.5dpc total fetus', 'embryo, 12.5 days post-conception, pooled']:
+				age = 'embryonic day 12.5'
+			elif token1 == '13 day embryos':
+				age = 'embryonic day 13.0'
+			elif token1 in ['13.5 dpc', '13.5dpc embryos']:
+				age = 'embryonic day 13.5'
+			elif token1 == '13.5-14.5dpc total fetus':
+				age = 'embryonic day 13.5-14.5'
+			elif token1 == 'embryo, 14 dpc':
+				age = 'embryonic day 14.0'
+			elif token1 in ['15.5 day embryos', 'embryo, 15.5 days post-conception, pooled']:
+				age = 'embryonic day 15.5'
+			elif token1 == '16.5 dpc':
+				age = 'embryonic day 16.5'
+			elif token1 == 'embryo, 18.5 days post-conception, pooled':
+				age = 'embryonic day 18.5'
+			elif token1 == '19.5 day embryos':
+				age = 'embryonic day 19.5'
+			elif token1 == 'embryo, 12.5, 13.5, 14.5 and 15.5 pooled':
+				age = 'embryonic day 12.5,13.5,14.5,15.5'
+			elif token1 == 'embryonic day, 13.5, 14.5, 16.5 and 17.5, pooled':
+				age = 'embryonic day 13.5,14.5,16.5,17.5'
+			elif token1 == 'embryonic maxilla and mandible day 10.5 and 11.5 pooled':
+				age = 'embryonic day 10.5,11.5'
+			elif token1 == 'fetal, mixture of 11.5 and 12.5 dpc':
+				age = 'embryonic day 11.5-12.5'
 
-				if d[1] == 'dpc':
-					tail = d[0]
+			elif token1 in ['Adult', 'adult, 5 months', 'adult', 'Unfertilized egg']:
+				age = 'postnatal adult'
 
-				age = head + tail
+			elif token1 == 'between 2 weeks - 2 months':
+				age = 'postnatal week 2-8'
 
-			except:
-				age = token1
+			elif token1 in ['Newborn', 'day 0', 'neonatal', 'newborn', 'newborn (day 0)']:
+				age = 'perinatal'
+
+			else:
+				age = 'Not Specified'
 
 		elif tokens[0] == '*COMMENT':
 			note = token1
