@@ -727,12 +727,11 @@ def addLibrary():
 	global accKey
 
 	# write master Library record
-	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, cdate, cdate])
-#	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy, createdBy, cdate, cdate])
+	bcpWrite(libraryFile, [libraryKey, library, description, referenceKey, organismKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy, createdBy, cdate, cdate])
 
 	# write MGI_AttributeHistory records
-#	for colName in libColNames:
-#		bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, createdBy, createdBy, cdate, cdate])
+	for colName in libColNames:
+		bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, createdBy, createdBy, cdate, cdate])
 
 	# write ACC_Accession and ACC_AccessionReference records
 	if len(libraryID) > 0:
