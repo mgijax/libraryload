@@ -13,7 +13,6 @@
 #	To load library records into Library structures:
 #
 #	PRB_Source
-#	MGI_AttributeHistory
 #	ACC_Accession
 #
 # Requirements Satisfied by This Program:
@@ -61,7 +60,6 @@
 #       2 BCP files:
 #
 #       PRB_Source.bcp         		Library
-#	MGI_AttributeHistory.bcp	History
 #       ACC_Accession.bcp        	Accession
 #
 #	Diagnostics file of all input parameters and SQL commands
@@ -175,7 +173,7 @@ mode = ''		# processing mode
 loaddate = loadlib.loaddate
 
 # Library Column Names (PRB_Source)
-libColNames = ['name','_Refs_key','_ProbeSpecies_key','_Strain_key','_Tissue_key','age','sex','cellLine']
+libColNames = ['name','_Refs_key','_SegmentType_key','_Vector_key','_ProbeSpecies_key','_Strain_key','_Tissue_key','age','sex','cellLine']
 
 # Library record attributes
 
@@ -643,6 +641,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.21.2.2  2004/03/09 19:09:23  lec
+# JSAM
+#
 # Revision 1.21.2.1  2004/03/09 19:03:10  lec
 # mgi 298
 #
