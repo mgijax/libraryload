@@ -122,7 +122,7 @@ strainLookup = {'':NS,
 		'BL6':'C57BL/6', 
 		'C57BL6':'C57BL/6',
                 '129/Sv x CD1':'129/Sv x CD-1',
-		'129/Svx129/Sv-CP':'129/Sv x 129S1/Sv-p<+> Tyr-c<+>',
+		'129/Svx129/Sv-CP':'129/Sv x 129S1/Sv-p Tyr<c>',
 		'129SV':'129/Sv',
 		'B6D2 F1/J':'B6D2F1/J',
 		'C3h/He':'C3H/He',
@@ -132,7 +132,9 @@ strainLookup = {'':NS,
 		'C57BL6':'C57BL/6',
 		'CD1':'CD-1',
 		'CZECH II':'CZECHII',
-		'NIH/Swiss':'NIH Swiss'}
+		'NIH/Swiss':'NIH Swiss',
+		'B5/EGFP transgenic ICR':'Not Specified',
+		'129 - C57/B6 - FVB/N':'Not Specified'}
 
 sexLookup = {'':NS, 'unknown':NS, 'neither':NS,
 	     'both':'Pooled', 'male':'Male', 'female':'Female'}
@@ -346,6 +348,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.14  2004/01/27 20:02:57  lec
+# TR 5020
+#
 # Revision 1.13  2004/01/27 17:48:24  lec
 # TR 5020
 #
