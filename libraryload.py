@@ -58,12 +58,6 @@
 #
 # Outputs:
 #
-#       3 BCP files:
-#
-#       PRB_Source.bcp         		Library
-#       ACC_Accession.bcp        	Accession table
-#	MGI_AttributeHistory.bcp	Attribute History
-#
 #	Diagnostics file of all input parameters and SQL commands
 #	Error file
 #
@@ -73,10 +67,6 @@
 #	1 if unsuccessful
 #
 # Assumes:
-#
-#      That this program has exclusive access to the database
-#      since it is creating new Accession records.
-#
 #
 # Bugs:
 #
@@ -91,11 +81,8 @@
 #	def processFile():	processes file; main processing loop
 #	def addLibrary():	creates bcp records for new library
 #	def updateLibrary():	updates existing library
-#	def bcpWrite():		writes values to bcp file
-#	def bcpFiles():		executes bcp for each bcp file
 #
 #	Tools Used:
-#		bcp		used to bulk-copy bcp files into database
 #
 #	Algorithm:
 #
@@ -125,13 +112,11 @@
 #
 #	  . If any verification fails, report the error and skip the record.
 #
-#	  . If the Library cannot be found in the database, create PRB_Source, ACC_Accession
-#	    records for the MGI object.
+#	  . If the Library cannot be found in the database, create and execute
+#	    insert statements for PRB_Source, ACC_Accession objects.
 #
 #	  . If the Library can be found in the database, update any attribute which
 #	    has not been modified by a curator.  Update the Library ID if it has been changed.
-#
-#	BCP the bcp files into the database
 #
 
 import sys
@@ -151,7 +136,9 @@ TAB = '\t'
 BCPDELIM = TAB
 REFERENCE = 'Reference'	# ACC_MGIType.name for References
 MGITYPEKEY = 5		# ACC_MGIType._MGIType_key for libraries
-isCuratoredEdited = 0
+MGITYPE = 'Source'	# ACC_MGIType.name for Sources
+NS = 'Not Specified'
+isCuratorEdited = 0
 
 inputFile = ''		# file descriptor
 diagFile = ''		# file descriptor
@@ -161,16 +148,7 @@ diagFileName = ''	# file name
 errorFileName = ''	# file name
 passwordFileName = ''	# file name
 
-libraryFile = ''	# file descriptor
-libraryFileName = ''	# file name
 libraryTable = 'PRB_Source'
-libraryFileSuffix = '.%s.bcp' % (libraryTable)
-
-accFile = ''		# file descriptor
-accFileName = ''	# file name
-accTable = 'ACC_Accession'
-accFileSuffix = '.%s.bcp' % (accTable)
-
 mode = ''		# processing mode
 
 loaddate = loadlib.loaddate
@@ -206,6 +184,12 @@ age = ''
 ageMin = ''
 ageMax = ''
 userKey = ''
+
+strainNS = ''
+tissueNS = ''
+genderNS = ''
+cellLineNS = ''
+ageNS = ''
 
 def showUsage():
     # Purpose: displays correct usage of this program
@@ -243,8 +227,6 @@ def exit(
         errorFile.write('\n\nEnd Date/Time: %s\n' % (mgi_utils.date()))
         diagFile.close()
         errorFile.close()
-        libraryFile.close()
-        accFile.close()
     except:
         pass
 
@@ -261,7 +243,6 @@ def init():
     # Throws: nothing
 
     global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-    global libraryFile, libraryFileName, accFile, accFileName
     global mode
  
     try:
@@ -310,8 +291,6 @@ def init():
     head, tail = os.path.split(inputFileName) 
     diagFileName = tail + '.' + fdate + '.diagnostics'
     errorFileName = tail + '.' + fdate + '.error'
-    libraryFileName = tail + '.' + fdate + libraryFileSuffix
-    accFileName = tail + '.' + fdate + accFileSuffix
 
     try:
         inputFile = open(inputFileName, 'r')
@@ -327,16 +306,6 @@ def init():
         errorFile = open(errorFileName, 'w')
     except:
         exit(1, 'Could not open file %s\n' % errorFileName)
-		
-    try:
-        libraryFile = open(libraryFileName, 'w')
-    except:
-        exit(1, 'Could not open file %s\n' % libraryFileName)
-		
-    try:
-        accFile = open(accFileName, 'w')
-    except:
-        exit(1, 'Could not open file %s\n' % accFileName)
 		
     # Log all SQL
     db.set_sqlLogFunction(db.sqlLogAll)
@@ -379,7 +348,9 @@ def processFile():
     # Throws: nothing
 
     global libraryName, libraryID, libraryKey, logicalDBKey
-    global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
+    global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey
+    global age, ageMin, ageMax, genderKey, cellLineKey, userKey
+    global strainNS, tissueNS, genderNS, cellLineNS, ageNS
 
     lineNum = 0
 
@@ -387,9 +358,11 @@ def processFile():
     results = db.sql('select maxKey = max(_Source_key) + 1 from %s' % (libraryTable), 'auto')
     newlibraryKey = results[0]['maxKey']
 
-    # retrieve next available primary key for Accession record
-    results = db.sql('select maxKey = max(_Accession_key) + 1 from %s' % (accTable), 'auto')
-    accKey = results[0]['maxKey']
+    strainNS = sourceloadlib.verifyStrain(NS, 0, None)
+    tissueNS = sourceloadlib.verifyTissue(NS, 0, None)
+    genderNS = sourceloadlib.verifyGender(NS, 0, None)
+    cellLineNS = sourceloadlib.verifyCellLine(NS, 0, None)
+    ageNS = NS
 
     # For each line in the input file
 
@@ -458,14 +431,10 @@ def processFile():
         if libraryKey == 0:
 
             libraryKey = newlibraryKey
-            addLibrary(accKey)
+            addLibrary()
 
 	    # increment primary keys
-
             newlibraryKey = newlibraryKey + 1
-
-	    if len(libraryID) > 0:
-		accKey = accKey + 1
 
 	# else, process existing library
         else:
@@ -473,25 +442,26 @@ def processFile():
 
     return
 
-def addLibrary(
-    accKey	# primary key for accession id, integer
-    ):
-    # Purpose: writes bcp records for a new library
+def addLibrary():
+    # Purpose: executes sql for a new library
     # Returns: nothing
     # Assumes: nothing
     # Effects: nothing
     # Throws: nothing
 
+    diagFile.write('Adding Library...%s, Id = %s.\n' % (libraryName, libraryID))
+
     # write master Library record
-    bcpWrite(libraryFile, [libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
+    addCmd = 'insert into PRB_Source values(%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s","%s","%s",%s,%s,%s,%s,%s,"%s","%s") ' \
+	% (libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
 	strainKey, tissueKey, genderKey, cellLineKey, referenceKey, libraryName, description, \
-	age, ageMin, ageMax, isCuratorEdited, userKey, userKey, loaddate, loaddate])
+	age, ageMin, ageMax, isCuratorEdited, userKey, userKey, loaddate, loaddate)
+    db.sql(addCmd, None, execute = not DEBUG)
 
     # write Accession records
     if len(libraryID) > 0:
-        prefixpart, numericpart = accessionlib.split_accnum(libraryID)
-        bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
-	    0, 1, userKey, userKey, loaddate, loaddate])
+	addCmd = 'exec ACC_insert %s,"%s",%s,"%s"' % (libraryKey, libraryID, logicalDBKey, MGITYPE)
+	db.sql(addCmd, None, execute = not DEBUG)
 
     return
 
@@ -513,7 +483,9 @@ def updateLibrary():
 
     results = db.sql(string.join(cmds, '\nunion\n'), 'auto')
 
-    #  for each attribute, if it's value has changed, update it
+    #  for each attribute, if it's value has changed, update it.
+    #  if the new attribute value = Not Specified, then don't update it.
+    #  we don't want to overwrite a value w/ "Not Specified".
 
     for r in results:
 
@@ -532,19 +504,19 @@ def updateLibrary():
         elif r['colName'] == '_Refs_key' and r['value'] != str(referenceKey):
                 setCmds.append('%s = %s' % (r['colName'], referenceKey))
 
-        elif r['colName'] == '_Strain_key' and r['value'] != str(strainKey):
+        elif r['colName'] == '_Strain_key' and r['value'] != str(strainKey) and strainKey != strainNS:
                 setCmds.append('%s = %s' % (r['colName'], strainKey))
 
-        elif r['colName'] == '_Tissue_key' and r['value'] != str(tissueKey):
+        elif r['colName'] == '_Tissue_key' and r['value'] != str(tissueKey) and tissueKey != tissueNS:
                 setCmds.append('%s = %s' % (r['colName'], tissueKey))
 
-        elif r['colName'] == '_Gender_key' and r['value'] != str(genderKey):
+        elif r['colName'] == '_Gender_key' and r['value'] != str(genderKey) and genderKey != genderNS:
                 setCmds.append('%s = %s' % (r['colName'], genderKey))
 
-        elif r['colName'] == '_CellLine_key' and r['value'] != str(cellLineKey):
+        elif r['colName'] == '_CellLine_key' and r['value'] != str(cellLineKey) and cellLineKey != cellLineNS:
                 setCmds.append('%s = %s' % (r['colName'], cellLineKey))
 
-        elif r['colName'] == 'age' and r['value'] != age:
+        elif r['colName'] == 'age' and r['value'] != age and age != NS:
                 setCmds.append('%s = "%s"' % (r['colName'], age))
                 setCmds.append('ageMin = %s' % (ageMin))
                 setCmds.append('ageMax = %s' % (ageMax))
@@ -552,7 +524,8 @@ def updateLibrary():
     # if there were any attribute value changes, then execute the update
 
     if len(setCmds) > 0:
-        setCmds.append('_ModifiedBy_key = %s' % (userKey)
+	diagFile.write('Updating Library...%s, Id = %s.\n' % (libraryName, libraryID))
+        setCmds.append('_ModifiedBy_key = %s' % (userKey))
         setCmds.append('modification_date = getdate()')
         setCmd = string.join(setCmds, ',')
         db.sql('update %s set %s where _Source_key = %s' % (libraryTable, setCmd, libraryKey), \
@@ -573,64 +546,6 @@ def updateLibrary():
 
     return
 
-def bcpWrite(
-    fp, 	# file pointer of bcp file
-    values	# list of values to write to bcp file (list)
-    ):
-
-    # Purpose: converts each value item to a string and writes out the values
-    #          to the bcpFile using the appropriate delimiter
-    # Returns: nothing
-    # Assumes: nothing
-    # Effects: nothing
-    # Throws: nothing
-
-    # convert all members of values to strings
-    strvalues = []
-    for v in values:
-        strvalues.append(str(mgi_utils.prvalue(v)))
-
-    fp.write('%s\n' % (string.join(strvalues, BCPDELIM)))
-
-    return
-
-def bcpFiles():
-    # Purpose: BCPs data files into appropriate database tables
-    # Returns: nothing
-    # Assumes: nothing
-    # Effects: nothing
-    # Throws: nothing
-
-    libraryFile.close()
-    accFile.close()
-
-    cmd1 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-        % (passwordFileName, db.get_sqlDatabase(), \
-        libraryTable, libraryFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
-
-    diagFile.write('%s\n' % cmd1)
-
-    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-        % (passwordFileName, db.get_sqlDatabase(), \
-        accTable, accFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
-
-    diagFile.write('%s\n' % cmd2)
-
-    cmd3 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
-        % (passwordFileName, db.get_sqlDatabase(), \
-        historyTable, historyFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
-
-    diagFile.write('%s\n' % cmd3)
-
-    if DEBUG:
-        return
-
-    os.system(cmd1)
-    os.system(cmd2)
-    os.system(cmd3)
-
-    return
-
 #
 # Main
 #
@@ -638,11 +553,13 @@ def bcpFiles():
 init()
 verifyMode()
 processFile()
-bcpFiles()
 exit(0)
 
 
 # $Log$
+# Revision 1.26  2004/03/09 19:14:26  lec
+# JSAM
+#
 # Revision 1.25  2004/03/09 19:10:15  lec
 # JSAM
 #

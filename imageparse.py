@@ -103,6 +103,7 @@ outputFile = ''		# file descriptor of output file
 errorFile = ''		# file descriptor of error file
 tissueFile = ''		# file descriptor of tissue file
 ageFile = ''		# file descriptor of age file
+strainFile = ''		# file descriptor of strain file
 
 NS = 'Not Specified'
 logicalDBName = 'IMAGE Clone Libraries'
@@ -110,31 +111,14 @@ jnum = 'J:57656'
 createdBy = 'library_load'
 tissueFileName = 'imagetissue.trans'
 ageFileName= 'imageage.trans'
+strainFileName= 'imagestrain.trans'
 
 tissueLookup = {}
 treatmentLookup = {}
 ageLookup = {}
+strainLookup = {}
 
 organismLookup = {'Mus musculus':'mouse, laboratory'}
-
-strainLookup = {'':NS, 
-		'BalbC':'BALB/c', 
-		'BL6':'C57BL/6', 
-		'C57BL6':'C57BL/6',
-                '129/Sv x CD1':'129/Sv x CD-1',
-		'129/Svx129/Sv-CP':'129/Sv x 129S1/Sv-p Tyr<c>',
-		'129SV':'129/Sv',
-		'B6D2 F1/J':'B6D2F1/J',
-		'C3h/He':'C3H/He',
-		'C57BL.Ka.Thy1.1':'C57BL/Ka-Thy1',
-		'C57Bl/6J':'C57BL/6J',
-		'C57BL/6JxDBA':'C57BL/6J x DBA',
-		'C57BL6':'C57BL/6',
-		'CD1':'CD-1',
-		'CZECH II':'CZECHII',
-		'NIH/Swiss':'NIH Swiss',
-		'B5/EGFP transgenic ICR':'Not Specified',
-		'129 - C57/B6 - FVB/N':'Not Specified'}
 
 sexLookup = {'':NS, 'unknown':NS, 'neither':NS,
 	     'both':'Pooled', 'male':'Male', 'female':'Female'}
@@ -182,7 +166,7 @@ def exit(
 # Throws:  nothing
      
 def init():
-    global inputFile, outputFile, errorFile, tissueFile, ageFile
+    global inputFile, outputFile, errorFile, tissueFile, ageFile, strainFile
     global tissueLookup, treatmentLookup, ageLookup
      
     try:
@@ -221,6 +205,11 @@ def init():
         exit(1, 'Could not open file %s\n' % ageFileName)
 		    
     try:
+        strainFile = open(strainFileName, 'r')
+    except:
+        exit(1, 'Could not open file %s\n' % strainFileName)
+		    
+    try:
         outputFile = open(outputFileName, 'w')
     except:
         exit(1, 'Could not open file %s\n' % outputFileName)
@@ -245,6 +234,13 @@ def init():
 	value = tokens[2]
 	ageLookup[key] = value
     ageFile.close()
+
+    for line in strainFile.readlines():
+        tokens = string.split(line[:-1], TAB)
+	key = tokens[0]
+	value = tokens[1]
+	strainLookup[key] = value
+    strainFile.close()
 
     return
 
@@ -290,7 +286,7 @@ def processFile():
 	segmentType = 'cDNA'
         strain = NS
         age = NS
-        cellLine = ''
+        cellLine = NS
 
 	# use translation tables
 
@@ -348,6 +344,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.15  2004/01/28 17:35:24  lec
+# JSAM
+#
 # Revision 1.14  2004/01/27 20:02:57  lec
 # TR 5020
 #
