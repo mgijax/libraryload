@@ -13,6 +13,7 @@
 #	To load library records into Library structures:
 #
 #	PRB_Source
+#	MGI_AttributeHistory
 #	ACC_Accession
 #
 # Requirements Satisfied by This Program:
@@ -60,7 +61,8 @@
 #       2 BCP files:
 #
 #       PRB_Source.bcp         		Library
-#       ACC_Accession.bcp        	Accession table
+#	MGI_AttributeHistory.bcp	History
+#       ACC_Accession.bcp        	Accession
 #
 #	Diagnostics file of all input parameters and SQL commands
 #	Error file
@@ -162,6 +164,10 @@ libraryFile = ''	# file descriptor
 libraryFileName = ''	# file name
 libraryTable = 'PRB_Source'
 libraryFileSuffix = '.%s.bcp' % (libraryTable)
+historyFile = ''	# file descriptor
+historyFileName = ''	# file name
+historyTable = 'MGI_AttributeHistory'
+historyFileSuffix = '.%s.bcp' % (historyTable)
 
 accFile = ''		# file descriptor
 accFileName = ''	# file name
@@ -193,7 +199,7 @@ ageMin = ''
 ageMax = ''
 gender = ''
 cellLine = ''
-createdBy = ''
+userKey = ''
 
 def showUsage():
     # Purpose: displays correct usage of this program
@@ -232,6 +238,7 @@ def exit(
         diagFile.close()
         errorFile.close()
         libraryFile.close()
+	historyFile.close()
         accFile.close()
     except:
         pass
@@ -249,7 +256,7 @@ def init():
     # Throws: nothing
 
     global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-    global libraryFile, libraryFileName, accFile, accFileName
+    global libraryFile, libraryFileName, historyFile, historyFileName, accFile, accFileName
     global mode
  
     try:
@@ -299,6 +306,7 @@ def init():
     diagFileName = tail + '.' + fdate + '.diagnostics'
     errorFileName = tail + '.' + fdate + '.error'
     libraryFileName = tail + '.' + fdate + libraryFileSuffix
+    historyFileName = tail + '.' + fdate + historyFileSuffix
     accFileName = tail + '.' + fdate + accFileSuffix
 
     try:
@@ -320,6 +328,11 @@ def init():
         libraryFile = open(libraryFileName, 'w')
     except:
         exit(1, 'Could not open file %s\n' % libraryFileName)
+		
+    try:
+        historyFile = open(historyFileName, 'w')
+    except:
+        exit(1, 'Could not open file %s\n' % historyFileName)
 		
     try:
         accFile = open(accFileName, 'w')
@@ -367,7 +380,8 @@ def processFile():
     # Throws: nothing
 
     global libraryName, libraryID, libraryKey, logicalDBKey
-    global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey, age, ageMin, ageMax, gender, cellLine, createdBy
+    global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey
+    global age, ageMin, ageMax, gender, cellLine, userKey
 
     lineNum = 0
 
@@ -420,6 +434,7 @@ def processFile():
         tissueKey = sourceloadlib.verifyTissue(tissue, lineNum, errorFile)
         gender = sourceloadlib.verifySex(gender, lineNum, errorFile)
         ageMin, ageMax = sourceloadlib.verifyAge(age, lineNum, errorFile)
+	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
 
         if segmentTypeKey == 0 or \
 	   vectorTypeKey == 0 or \
@@ -427,7 +442,8 @@ def processFile():
            referenceKey == 0 or \
            strainKey == 0 or \
            tissueKey == 0 or \
-           gender == 0:
+           gender == 0 or \
+	   userKey == 0
             # set error flag to true
             error = 1
 
@@ -470,12 +486,18 @@ def addLibrary(
     bcpWrite(libraryFile, [libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
 	strainKey, tissueKey, referenceKey, libraryName, description, \
 	age, ageMin, ageMax, gender, cellLine, loaddate, loaddate])
+#	age, ageMin, ageMax, gender, cellLine, userKey, userKey, loaddate, loaddate])
+
+    # write MGI_AttributeHistory records
+#    for colName in libColNames:
+#        bcpWrite(historyFile, [libraryKey, mgiTypeKey, colName, userKey, userKey, cdate, cdate])
 
     # write Accession records
     if len(libraryID) > 0:
         prefixpart, numericpart = accessionlib.split_accnum(libraryID)
         bcpWrite(accFile, [accKey, libraryID, prefixpart, numericpart, logicalDBKey, libraryKey, MGITYPEKEY, \
 	    0, 1, loaddate, loaddate, loaddate])
+#	    0, 1, userKey, userKey, loaddate, loaddate])
 
     return
 
@@ -555,6 +577,7 @@ def updateLibrary(
     if len(setCmds) > 0:
         setCmds.append('modification_date = getdate()')
         setCmd = string.join(setCmds, ',')
+	# note that the update trigger handles updates to the history records
         db.sql('update %s set %s where _Source_key = %s' % (libraryTable, setCmd, libraryKey), \
 	    None, execute = not DEBUG)
 
@@ -615,11 +638,17 @@ def bcpFiles():
 
     diagFile.write('%s\n' % cmd1)
 
-    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+#    cmd2 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
+#        % (passwordFileName, db.get_sqlDatabase(), \
+#        historyTable, historyFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
+#
+#    diagFile.write('%s\n' % cmd2)
+
+    cmd3 = 'cat %s | bcp %s..%s in %s -c -t\"%s" -S%s -U%s' \
         % (passwordFileName, db.get_sqlDatabase(), \
         accTable, accFileName, BCPDELIM, db.get_sqlServer(), db.get_sqlUser())
 
-    diagFile.write('%s\n' % cmd2)
+    diagFile.write('%s\n' % cmd3)
 
     if DEBUG:
         return
@@ -641,6 +670,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.20  2004/01/27 20:02:57  lec
+# TR 5020
+#
 # Revision 1.19  2004/01/27 17:48:25  lec
 # TR 5020
 #
