@@ -14,7 +14,7 @@
 #
 # Requirements Satisfied by This Program:
 #
-#	JSAM (TR 3404
+#	JSAM (TR 3404)
 #
 # Usage:
 #        imageparse.py -I input file
@@ -463,6 +463,9 @@ processFile()
 exit(0)
 
 # $Log$
+# Revision 1.10  2003/03/12 17:26:00  lec
+# revised to use coding standards
+#
 # Revision 1.9  2003/03/12 16:58:20  lec
 # revised to use coding standards
 #
