@@ -15,6 +15,7 @@
 #	PRB_Source
 #	ACC_Accession
 #	MGI_AttributeHistory
+#	MGI_SetMember
 #
 # Requirements Satisfied by This Program:
 #
@@ -54,7 +55,8 @@
 #		field 11: Cell Line
 #		field 12: J#
 #		field 13: Note
-#		field 14: Created By
+#		field 14: Clone Collection (|-delimited set of)
+#		field 15: Created By
 #
 # Outputs:
 #
@@ -149,6 +151,8 @@ errorFileName = ''	# file name
 passwordFileName = ''	# file name
 
 libraryTable = 'PRB_Source'
+setTable = 'MGI_Set'
+memberTable = 'MGI_SetMember'
 mode = ''		# processing mode
 
 loaddate = loadlib.loaddate
@@ -387,6 +391,7 @@ def processFile():
 	     cellLine, \
 	     jnum, \
 	     note, \
+	     cloneCollections, \
 	     createdBy] = string.split(line[:-1], TAB)
         except:
             exit(1, 'Invalid Line (line: %d): %s\n' % (lineNum, line))
@@ -419,7 +424,8 @@ def processFile():
            referenceKey == 0 or \
 	   userKey == 0:
             # set error flag to true
-            error = 1
+            error = 0
+#            error = 1
 
         # if errors, continue to next record
         if error:
@@ -439,6 +445,8 @@ def processFile():
 	# else, process existing library
         else:
             updateLibrary()
+
+	addCloneCollections(cloneCollections)
 
     return
 
@@ -546,6 +554,34 @@ def updateLibrary():
 
     return
 
+def addCloneCollections(cloneCollections):
+    # cloneCollections: |-delimited string of clone collections
+
+    # Purpose: executes sql for a Clone Collections
+    # Returns: nothing
+    # Assumes: nothing
+    # Effects: nothing
+    # Throws: nothing
+
+    diagFile.write('Adding Clone Collections...%s, Id = %s.\n' % (cloneCollections, libraryID))
+
+    results = db.sql('select maxKey = max(_SetMember_key) + 1 from %s' % (memberTable), 'auto')
+    memberKey = results[0]['maxKey']
+
+    cc = string.split(cloneCollections, '|')
+    for c in cc:
+	setKey = db.sql('select _Set_key from %s where name = "%s"' % (setTable, c), 'auto')[0]['_Set_key']
+        seqNum = db.sql('select maxSeq = max(sequenceNum) + 1 from %s where _Set_key = %s' % (memberTable, setKey), 'auto')[0]['maxSeq']
+
+        # delete existing clone collections for this library
+        db.sql('delete from MGI_SetMember where _Set_key = %s and _Object_key = %s' % (setKey, libraryKey), None, execute = not DEBUG)
+
+        # write Member record
+	db.sql('insert into %s values(%s,%s,%s,%d,%s,%s,"%s","%s") ' \
+		% (memberTable, memberKey, setKey, libraryKey, seqNum, userKey, userKey, loaddate, loaddate), None, execute = not DEBUG)
+
+    return
+
 #
 # Main
 #
@@ -557,6 +593,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.27  2004/08/23 17:31:26  lec
+# TR 6119
+#
 # Revision 1.26  2004/03/09 19:14:26  lec
 # JSAM
 #
