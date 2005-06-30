@@ -417,7 +417,6 @@ def processFile():
         genderKey = sourceloadlib.verifyGender(gender, lineNum, errorFile)
         cellLineKey = sourceloadlib.verifyCellLine(cellLine, lineNum, errorFile)
         ageMin, ageMax = sourceloadlib.verifyAge(age, lineNum, errorFile)
-
         referenceKey = loadlib.verifyReference(jnum, lineNum, errorFile)
 	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
 
@@ -429,7 +428,8 @@ def processFile():
 	   cellLineKey == 0 or \
 	   organismKey == 0 or \
            referenceKey == 0 or \
-	   userKey == 0:
+	   userKey == 0 or \
+	   ageMin < 0:
             # set error flag to true
             error = 0
 #            error = 1
@@ -575,6 +575,13 @@ def addCloneCollections(cloneCollections):
     results = db.sql('select maxKey = max(_SetMember_key) + 1 from %s' % (memberTable), 'auto')
     memberKey = results[0]['maxKey']
 
+    # delete existing clone collections for this library
+
+    db.sql('delete MGI_SetMember from MGI_Set s, MGI_SetMember sm ' + \
+	'where s._MGIType_key = %s ' % (MGITYPEKEY) + \
+	'and s._Set_key = sm._Set_key ' + \
+	'and sm._Object_key = %s' % (libraryKey), None, execute = not DEBUG)
+
     cc = string.split(cloneCollections, '|')
     for c in cc:
 
@@ -589,15 +596,11 @@ def addCloneCollections(cloneCollections):
 
         seqNum = db.sql('select maxSeq = max(sequenceNum) + 1 from %s where _Set_key = %s' % (memberTable, setKey), 'auto')[0]['maxSeq']
 
-        # delete existing clone collections for this library
-        db.sql('delete MGI_SetMember from MGI_Set s, MGI_SetMember sm ' + \
-		'where s._MGIType_key = %s ' % (MGITYPEKEY) + \
-		'and s._Set_key = sm._Set_key ' + \
-		'and sm._Object_key = %s' % (libraryKey), None, execute = not DEBUG)
-
         # write Member record
 	db.sql('insert into %s values(%s,%s,%s,%d,%s,%s,"%s","%s") ' \
 		% (memberTable, memberKey, setKey, libraryKey, seqNum, userKey, userKey, loaddate, loaddate), None, execute = not DEBUG)
+
+	memberKey = memberKey + 1
 
     return
 
@@ -612,6 +615,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.31  2005/06/30 13:26:33  lec
+# Fantom3
+#
 # Revision 1.30  2005/06/30 13:17:45  lec
 # Fantom3
 #
