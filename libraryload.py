@@ -120,6 +120,9 @@
 #	  . If the Library can be found in the database, update any attribute which
 #	    has not been modified by a curator.  Update the Library ID if it has been changed.
 #
+#	  . Process the Clone Collections
+#	    - delete existing 
+#
 
 import sys
 import os
@@ -457,7 +460,7 @@ def addLibrary():
     # Effects: nothing
     # Throws: nothing
 
-    diagFile.write('Adding Library...%s, Id = %s.\n' % (libraryName, libraryID))
+    diagFile.write('Adding Library...%s.\n' % (libraryName))
 
     # write master Library record
     addCmd = 'insert into PRB_Source values(%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s","%s","%s",%s,%s,%s,%s,%s,"%s","%s") ' \
@@ -532,7 +535,7 @@ def updateLibrary():
     # if there were any attribute value changes, then execute the update
 
     if len(setCmds) > 0:
-	diagFile.write('Updating Library...%s, Id = %s.\n' % (libraryName, libraryID))
+	diagFile.write('Updating Library...%s.\n' % (libraryName))
         setCmds.append('_ModifiedBy_key = %s' % (userKey))
         setCmds.append('modification_date = getdate()')
         setCmd = string.join(setCmds, ',')
@@ -563,18 +566,27 @@ def addCloneCollections(cloneCollections):
     # Effects: nothing
     # Throws: nothing
 
-    diagFile.write('Adding Clone Collections...%s, Id = %s.\n' % (cloneCollections, libraryID))
+    diagFile.write('Adding Clone Collections...%s, Library = %s.\n' % (cloneCollections, libraryName))
 
     results = db.sql('select maxKey = max(_SetMember_key) + 1 from %s' % (memberTable), 'auto')
     memberKey = results[0]['maxKey']
 
     cc = string.split(cloneCollections, '|')
     for c in cc:
-	setKey = db.sql('select _Set_key from %s where name = "%s"' % (setTable, c), 'auto')[0]['_Set_key']
+
+	setKey = 0
+	results = db.sql('select _Set_key from %s where name = "%s"' % (setTable, c), 'auto')
+	for r in results:
+	    setKey = r['_Set_key']
+
+        if setKey == 0:
+            errorFile.write('Invalid Set: %s\n' % (c))
+	    continue
+
         seqNum = db.sql('select maxSeq = max(sequenceNum) + 1 from %s where _Set_key = %s' % (memberTable, setKey), 'auto')[0]['maxSeq']
 
         # delete existing clone collections for this library
-        db.sql('delete from MGI_SetMember where _Set_key = %s and _Object_key = %s' % (setKey, libraryKey), None, execute = not DEBUG)
+        db.sql('delete from MGI_SetMember where _MGIType_key = %s and _Object_key = %s' % (MGITYPEKEY, libraryKey), None, execute = not DEBUG)
 
         # write Member record
 	db.sql('insert into %s values(%s,%s,%s,%d,%s,%s,"%s","%s") ' \
@@ -593,6 +605,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.28  2005/06/27 14:51:39  lec
+# Fantom3
+#
 # Revision 1.27  2004/08/23 17:31:26  lec
 # TR 6119
 #
