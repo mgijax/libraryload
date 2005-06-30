@@ -586,7 +586,10 @@ def addCloneCollections(cloneCollections):
         seqNum = db.sql('select maxSeq = max(sequenceNum) + 1 from %s where _Set_key = %s' % (memberTable, setKey), 'auto')[0]['maxSeq']
 
         # delete existing clone collections for this library
-        db.sql('delete from MGI_SetMember where _MGIType_key = %s and _Object_key = %s' % (MGITYPEKEY, libraryKey), None, execute = not DEBUG)
+        db.sql('delete MGI_SetMember from MGI_Set s, MGI_SetMember sm ' + \
+		'where s._MGIType_key = %s ' % (MGITYPEKEY) + \
+		'and s._Set_key = sm._Set_key ' + \
+		'and sm._Object_key = %s' % (libraryKey), None, execute = not DEBUG)
 
         # write Member record
 	db.sql('insert into %s values(%s,%s,%s,%d,%s,%s,"%s","%s") ' \
@@ -605,6 +608,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.29  2005/06/30 13:12:07  lec
+# Fantom3
+#
 # Revision 1.28  2005/06/27 14:51:39  lec
 # Fantom3
 #
