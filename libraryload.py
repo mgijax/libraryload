@@ -401,9 +401,13 @@ def processFile():
             continue
 
         libraryKey = sourceloadlib.verifyLibrary(libraryName, lineNum)
-        logicalDBKey = loadlib.verifyLogicalDB(logicalDB, lineNum, errorFile)
 
-	if libraryKey == 0:
+	if len(logicalDB) > 0:
+            logicalDBKey = loadlib.verifyLogicalDB(logicalDB, lineNum, errorFile)
+	else:
+            logicalDBKey = 0
+
+	if libraryKey == 0 and len(libraryID) > 0:
 	    libraryKey = sourceloadlib.verifyLibraryID(libraryID, logicalDBKey, lineNum, errorFile)
 
 	segmentTypeKey = sourceloadlib.verifySegmentType(segmentType, lineNum, errorFile)
@@ -608,6 +612,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.30  2005/06/30 13:17:45  lec
+# Fantom3
+#
 # Revision 1.29  2005/06/30 13:12:07  lec
 # Fantom3
 #
