@@ -431,8 +431,7 @@ def processFile():
 	   userKey == 0 or \
 	   ageMin < 0:
             # set error flag to true
-            error = 0
-#            error = 1
+            error = 1
 
         # if errors, continue to next record
         if error:
@@ -615,6 +614,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.32  2005/06/30 13:37:38  lec
+# Fantom3
+#
 # Revision 1.31  2005/06/30 13:26:33  lec
 # Fantom3
 #
