@@ -429,9 +429,20 @@ def processFile():
 	   organismKey == 0 or \
            referenceKey == 0 or \
 	   userKey == 0 or \
-	   ageMin < 0:
+	   ageMin is None:
             # set error flag to true
             error = 1
+#	    print str(segmentTypeKey)
+#	    print str(vectorTypeKey)
+#	    print str(strainKey)
+#	    print str(tissueKey)
+#	    print str(genderKey)
+#	    print str(cellLineKey)
+#	    print str(organismKey)
+#	    print str(referenceKey)
+#	    print str(userKey)
+#	    print str(ageMin)
+	    errorFile.write('Errors:  %s\n' % (libraryName))
 
         # if errors, continue to next record
         if error:
@@ -614,6 +625,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.33  2005/06/30 13:46:32  lec
+# Fantom3
+#
 # Revision 1.32  2005/06/30 13:37:38  lec
 # Fantom3
 #
