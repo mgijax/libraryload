@@ -175,7 +175,7 @@ libColNames = ['name',
 # Library record attributes
 
 libraryKey = ''
-description = ''
+description = 'NULL'
 libraryName = ''
 libraryID = ''
 logicalDBKey = ''
@@ -477,7 +477,7 @@ def addLibrary():
     diagFile.write('Adding Library...%s.\n' % (libraryName))
 
     # write master Library record
-    addCmd = 'insert into PRB_Source values(%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s","%s","%s",%s,%s,%s,%s,%s,"%s","%s") ' \
+    addCmd = 'insert into PRB_Source values(%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s",%s,"%s",%s,%s,%s,%s,%s,"%s","%s") ' \
 	% (libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
 	strainKey, tissueKey, genderKey, cellLineKey, referenceKey, libraryName, description, \
 	age, ageMin, ageMax, isCuratorEdited, userKey, userKey, loaddate, loaddate)
@@ -625,6 +625,9 @@ exit(0)
 
 
 # $Log$
+# Revision 1.34  2005/08/25 13:04:14  lec
+# Fantom3
+#
 # Revision 1.33  2005/06/30 13:46:32  lec
 # Fantom3
 #
