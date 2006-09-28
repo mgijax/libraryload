@@ -1,8 +1,5 @@
 #!/usr/local/bin/python
 
-# $Header$
-# $Name$
-
 #
 # Program: niaparse.py
 #
@@ -409,21 +406,4 @@ def processFile():
 init()
 processFile()
 exit(0)
-
-# $Log$
-# Revision 1.1.2.3  2004/03/10 15:08:40  lec
-# NIA
-#
-# Revision 1.1.2.2  2004/03/10 15:06:28  lec
-# NIA
-#
-# Revision 1.1.2.1  2004/03/09 19:03:12  lec
-# mgi 298
-#
-# Revision 1.4  2004/03/09 18:03:47  lec
-# JSAM
-#
-# Revision 1.1  2003/06/17 16:29:34  lec
-# new
-#
 

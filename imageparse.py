@@ -1,8 +1,5 @@
 #!/usr/local/bin/python
 
-# $Header$
-# $Name$
-
 #
 # Program: imageparse.py
 #
@@ -342,28 +339,4 @@ def processFile():
 init()
 processFile()
 exit(0)
-
-# $Log$
-# Revision 1.15  2004/01/28 17:35:24  lec
-# JSAM
-#
-# Revision 1.14  2004/01/27 20:02:57  lec
-# TR 5020
-#
-# Revision 1.13  2004/01/27 17:48:24  lec
-# TR 5020
-#
-# Revision 1.12  2004/01/22 17:46:21  lec
-# new IMAGE
-#
-# Revision 1.11  2003/03/24 17:58:43  lec
-# libraryload-1-0-5
-#
-# Revision 1.10  2003/03/12 17:26:00  lec
-# revised to use coding standards
-#
-# Revision 1.9  2003/03/12 16:58:20  lec
-# revised to use coding standards
-#
-#
 

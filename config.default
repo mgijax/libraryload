@@ -1,0 +1,13 @@
+#!/bin/csh -f
+
+#
+# Library load configuration file
+#
+
+source ./Configuration
+
+setenv LIBRARYMODE		load
+setenv LIBRARYDATADIR		?
+setenv LIBRARYINPUTFILE		${LIBRARYDATADIR}/input/?
+setenv LIBRARYLOG		${LIBRARYDATADIR}/logs/?
+

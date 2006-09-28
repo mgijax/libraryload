@@ -1,35 +1,36 @@
+TAG: libraryload-3-5-1-1
+DATE: 09/28/2006
+STAFF: lec
+CHANGES: 
+1) TR7894; mgiconfig
+
 TAG: libraryload-3-2-0-1
 DATE: 08/29/2005
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) Fantom 3
 
 TAG: libraryload-2-0-3
 DATE: 08/25/2004
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) JSAM; imageparse.py
 
 TAG: libraryload-2-0-2
 DATE: 03/10/2004
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) JSAM; niaparse.py
 
 TAG: libraryload-2-0-1
 DATE: 03/09/2004
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) JSAM
 
 TAG: libraryload-2-0-0
 DATE: 01/28/2004
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) JSAM
 
@@ -37,21 +38,18 @@ TAG: libraryload-1-0-7
 TAG: libraryload-1-0-6
 DATE: 01/28/2004
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) IMAGE updates
 
 TAG: libraryload-1-0-5
 DATE: 03/24/2003
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) LAF2
 
 TAG: libraryload-1-0-4
 DATE: 03/12/2003
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) use new MGI coding standards
 
@@ -59,7 +57,6 @@ TAG: libraryload-1-0-3
 TAG: libraryload-1-0-2
 DATE: 03/11/2003
 STAFF: lec
-RELEASE: A
 CHANGES: 
 1) pre-JSAM load (libraryload.py)
 2) JSAM load (libraryload.py.jsam)
@@ -67,12 +64,10 @@ CHANGES:
 TAG: libraryload-1-0-1
 DATE: 02/28/2003
 STAFF: lec
-RELEASE: A
 CHANGES: New CVS repository
 
 TAG: libraryload-1-0-0
 DATE: 02/25/2003
 STAFF: lec
-RELEASE: A
 CHANGES: New CVS repository
 

@@ -1,8 +1,5 @@
 #!/usr/local/bin/python
 
-# $Header$
-# $Name$
-
 #
 # Program:	libraryload.py
 #
@@ -21,12 +18,6 @@
 #
 # Usage:
 #	libraryload.py
-#	-S = database server
-#	-D = database
-#	-U = user
-#	-P = password file
-#	-M = mode (full, preview)
-#	-I = input file
 #
 #	processing modes:
 #		full - update Libraries.  
@@ -127,7 +118,6 @@
 import sys
 import os
 import string
-import getopt
 import accessionlib
 import db
 import mgi_utils
@@ -135,6 +125,11 @@ import loadlib
 import sourceloadlib
 
 #globals
+
+user = os.environ['MGD_DBUSER']
+passwordFileName = os.environ['MGD_DBPASSWORDFILE']
+mode = os.environ['LIBRARYMODE']
+inputFileName = os.environ['LIBRARYINPUTFILE']
 
 DEBUG = 0		# set DEBUG to false unless preview mode is selected
 TAB = '\t'
@@ -151,12 +146,10 @@ errorFile = ''		# file descriptor
 
 diagFileName = ''	# file name
 errorFileName = ''	# file name
-passwordFileName = ''	# file name
 
 libraryTable = 'PRB_Source'
 setTable = 'MGI_Set'
 memberTable = 'MGI_SetMember'
-mode = ''		# processing mode
 
 loaddate = loadlib.loaddate
 
@@ -198,22 +191,6 @@ genderNS = ''
 cellLineNS = ''
 ageNS = ''
 
-def showUsage():
-    # Purpose: displays correct usage of this program
-    # Returns: nothing
-    # Assumes: nothing
-    # Effects: exits with status of 1
-    # Throws: nothing
-
-    usage = 'usage: %s -S server\n' % sys.argv[0] + \
-        '-D database\n' + \
-        '-U user\n' + \
-        '-P password file\n' + \
-        '-M mode (full, preview)\n' + \
-	'-I input file\n'
-
-    exit(1, usage)
-
 def exit(
     status,          # numeric exit status (integer)
     message = None   # exit message (string)
@@ -245,54 +222,14 @@ def init():
     # Returns: nothing
     # Assumes: nothing
     # Effects: initializes global variables
-    #          calls showUsage() if usage error
     #          exits if files cannot be opened
     # Throws: nothing
 
-    global inputFile, diagFile, errorFile, errorFileName, diagFileName, passwordFileName
-    global mode
+    global inputFile, diagFile, errorFile, errorFileName, diagFileName
  
-    try:
-        optlist, args = getopt.getopt(sys.argv[1:], 'S:D:U:P:M:I:')
-    except:
-        showUsage()
- 
-    server = ''
-    database = ''
-    user = ''
-    password = ''
-    inputFileName = ''
- 
-    for opt in optlist:
-        if opt[0] == '-S':
-            server = opt[1]
-        elif opt[0] == '-D':
-            database = opt[1]
-        elif opt[0] == '-U':
-            user = opt[1]
-        elif opt[0] == '-P':
-            passwordFileName = opt[1]
-        elif opt[0] == '-M':
-            mode = opt[1]
-        elif opt[0] == '-I':
-            inputFileName = opt[1]
-        else:
-            showUsage()
-
-    # User must specify Server, Database, User and Password
-    password = string.strip(open(passwordFileName, 'r').readline())
-
-    if server == '' or \
-        database == '' or \
-        user == '' or \
-        password == '' or \
-        mode == '' or \
-        inputFileName == '':
-        showUsage()
-
-    # Initialize db.py DBMS parameters
-    db.set_sqlLogin(user, password, server, database)
     db.useOneConnection(1)
+    db.set_sqlUser(user)
+    db.set_sqlPasswordFromFile(passwordFileName)
  
     fdate = mgi_utils.date('%m%d%Y')	# current date
     head, tail = os.path.split(inputFileName) 
@@ -321,9 +258,8 @@ def init():
     db.set_sqlLogFD(diagFile)
 
     diagFile.write('Start Date/Time: %s\n' % (mgi_utils.date()))
-    diagFile.write('Server: %s\n' % (server))
-    diagFile.write('Database: %s\n' % (database))
-    diagFile.write('User: %s\n' % (user))
+    diagFile.write('Server: %s\n' % (db.get_sqlServer()))
+    diagFile.write('Database: %s\n' % (db.get_sqlDatabase()))
     diagFile.write('Input File: %s\n' % (inputFileName))
 
     errorFile.write('Start Date/Time: %s\n\n' % (mgi_utils.date()))
@@ -622,58 +558,4 @@ init()
 verifyMode()
 processFile()
 exit(0)
-
-
-# $Log$
-# Revision 1.34  2005/08/25 13:04:14  lec
-# Fantom3
-#
-# Revision 1.33  2005/06/30 13:46:32  lec
-# Fantom3
-#
-# Revision 1.32  2005/06/30 13:37:38  lec
-# Fantom3
-#
-# Revision 1.31  2005/06/30 13:26:33  lec
-# Fantom3
-#
-# Revision 1.30  2005/06/30 13:17:45  lec
-# Fantom3
-#
-# Revision 1.29  2005/06/30 13:12:07  lec
-# Fantom3
-#
-# Revision 1.28  2005/06/27 14:51:39  lec
-# Fantom3
-#
-# Revision 1.27  2004/08/23 17:31:26  lec
-# TR 6119
-#
-# Revision 1.26  2004/03/09 19:14:26  lec
-# JSAM
-#
-# Revision 1.25  2004/03/09 19:10:15  lec
-# JSAM
-#
-# Revision 1.24  2004/03/09 19:07:29  lec
-# JSAM
-#
-# Revision 1.18  2003/03/21 16:24:45  lec
-# LAF2
-#
-# Revision 1.17  2003/03/12 17:28:13  lec
-# revised to use coding standards
-#
-# Revision 1.16  2003/03/12 17:26:00  lec
-# revised to use coding standards
-#
-# Revision 1.15  2003/03/12 17:22:02  lec
-# revised to use coding standards
-#
-# Revision 1.14  2003/03/12 17:04:34  lec
-# revised to use coding standards
-#
-# Revision 1.13  2003/03/12 16:58:21  lec
-# revised to use coding standards
-#
 
