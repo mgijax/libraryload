@@ -183,7 +183,7 @@ cellLineKey = ''
 age = ''
 ageMin = ''
 ageMax = ''
-userKey = ''
+createdByKey = ''
 
 strainNS = ''
 tissueNS = ''
@@ -292,7 +292,7 @@ def processFile():
 
     global libraryName, libraryID, libraryKey, logicalDBKey
     global segmentTypeKey, vectorTypeKey, organismKey, referenceKey, strainKey, tissueKey
-    global age, ageMin, ageMax, genderKey, cellLineKey, userKey
+    global age, ageMin, ageMax, genderKey, cellLineKey, createdByKey
     global strainNS, tissueNS, genderNS, cellLineNS, ageNS
 
     lineNum = 0
@@ -354,7 +354,7 @@ def processFile():
         cellLineKey = sourceloadlib.verifyCellLine(cellLine, lineNum, errorFile)
         ageMin, ageMax = sourceloadlib.verifyAge(age, lineNum, errorFile)
         referenceKey = loadlib.verifyReference(jnum, lineNum, errorFile)
-	userKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
+	createdByKey = loadlib.verifyUser(createdBy, lineNum, errorFile)
 
         if segmentTypeKey == 0 or \
 	   vectorTypeKey == 0 or \
@@ -364,7 +364,7 @@ def processFile():
 	   cellLineKey == 0 or \
 	   organismKey == 0 or \
            referenceKey == 0 or \
-	   userKey == 0 or \
+	   createdByKey == 0 or \
 	   ageMin is None:
             # set error flag to true
             error = 1
@@ -376,7 +376,7 @@ def processFile():
 #	    print str(cellLineKey)
 #	    print str(organismKey)
 #	    print str(referenceKey)
-#	    print str(userKey)
+#	    print str(createdByKey)
 #	    print str(ageMin)
 	    errorFile.write('Errors:  %s\n' % (libraryName))
 
@@ -416,7 +416,7 @@ def addLibrary():
     addCmd = 'insert into PRB_Source values(%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s",%s,"%s",%s,%s,%s,%s,%s,"%s","%s") ' \
 	% (libraryKey, segmentTypeKey, vectorTypeKey, organismKey, \
 	strainKey, tissueKey, genderKey, cellLineKey, referenceKey, libraryName, description, \
-	age, ageMin, ageMax, isCuratorEdited, userKey, userKey, loaddate, loaddate)
+	age, ageMin, ageMax, isCuratorEdited, createdByKey, createdByKey, loaddate, loaddate)
     db.sql(addCmd, None, execute = not DEBUG)
 
     # write Accession records
@@ -486,7 +486,7 @@ def updateLibrary():
 
     if len(setCmds) > 0:
 	diagFile.write('Updating Library...%s.\n' % (libraryName))
-        setCmds.append('_ModifiedBy_key = %s' % (userKey))
+        setCmds.append('_ModifiedBy_key = %s' % (createdByKey))
         setCmds.append('modification_date = getdate()')
         setCmd = string.join(setCmds, ',')
         db.sql('update %s set %s where _Source_key = %s' % (libraryTable, setCmd, libraryKey), \
@@ -544,7 +544,7 @@ def addCloneCollections(cloneCollections):
 
         # write Member record
 	db.sql('insert into %s values(%s,%s,%s,%d,%s,%s,"%s","%s") ' \
-		% (memberTable, memberKey, setKey, libraryKey, seqNum, userKey, userKey, loaddate, loaddate), None, execute = not DEBUG)
+		% (memberTable, memberKey, setKey, libraryKey, seqNum, createdByKey, createdByKey, loaddate, loaddate), None, execute = not DEBUG)
 
 	memberKey = memberKey + 1
 
