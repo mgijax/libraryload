@@ -118,7 +118,6 @@
 import sys
 import os
 import string
-import accessionlib
 import db
 import mgi_utils
 import loadlib
