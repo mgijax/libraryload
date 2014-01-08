@@ -11,7 +11,6 @@
 #
 #	PRB_Source
 #	ACC_Accession
-#	MGI_AttributeHistory
 #	MGI_SetMember
 #
 # Requirements Satisfied by This Program:
