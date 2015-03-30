@@ -501,7 +501,7 @@ def updateLibrary():
 
         for r in results:
             if r['accID'] != libraryID:
-                db.sql('exec ACC_update %s, "%s"' % (r['_Accession_key'], libraryID), None)
+                db.sql('exec ACC_update 1001,%s,"%s"' % (r['_Accession_key'], libraryID), None)
 
     return
 
