@@ -419,7 +419,7 @@ def addLibrary():
 
     # write Accession records
     if len(libraryID) > 0:
-	addCmd = 'exec ACC_insert %s,"%s",%s,"%s"' % (libraryKey, libraryID, logicalDBKey, MGITYPE)
+	addCmd = 'exec ACC_insert 1001,%s,"%s",%s,"%s"' % (libraryKey, libraryID, logicalDBKey, MGITYPE)
 	db.sql(addCmd, None, execute = not DEBUG)
 
     return
